@@ -1,16 +1,25 @@
 'use client'
 
+import { memo } from 'react'
 import TypeIcon from './TypeIcon'
 import { objectName, shapeOf, typeOf } from '../lib/objectTypes'
 
+const POLY_SHAPES = ['hex', 'octa', 'diamond']
+
 // Один объект на карте. Используется и в редакторе, и в рабочем режиме.
 // status: null (нейтрально) | 'free' | 'booked' | 'busy' | 'off'
-export default function MapObject({
+// Обёрнут в memo: во время перетаскивания родитель обновляет только
+// перемещаемые объекты (остальные сохраняют ссылку в массиве objects),
+// поэтому немодифицированные объекты не должны перерисовываться —
+// это требует, чтобы onPointerDown, приходящий сверху, был стабильной
+// ссылкой (см. MapEditor/MapBoard, где он больше не создаётся инлайн).
+function MapObject({
   obj,
   status = null,
   ringColor = null,
   selected = false,
   dimmed = false,
+  dragging = false,
   zoom = 1,
   onPointerDown,
   onDoubleClick,
@@ -18,6 +27,7 @@ export default function MapObject({
   const t = typeOf(obj.type)
   const shape = shapeOf(obj)
   const name = objectName(obj)
+  const isPoly = POLY_SHAPES.includes(shape)
 
   const shortest = Math.min(obj.width, obj.height)
   const onScreen = shortest * zoom
@@ -40,6 +50,7 @@ export default function MapObject({
         status ? `st-${status}` : 'st-none',
         selected ? 'sel' : '',
         dimmed ? 'dim' : '',
+        dragging ? 'dragging' : '',
         obj.locked ? 'locked' : '',
       ].join(' ')}
       style={{
@@ -57,6 +68,7 @@ export default function MapObject({
     >
       <span className={`face sh-${shape}`} aria-hidden="true" />
       {ringColor && <span className={`ring sh-${shape}`} aria-hidden="true" />}
+      {selected && isPoly && <span className={`sel-glow sh-${shape}`} aria-hidden="true" />}
 
       <span
         className="cap"
@@ -84,7 +96,14 @@ export default function MapObject({
           box-sizing: border-box;
           background: var(--edge, #b0c0c6);
           color: var(--label, #0c1b22);
-          transition: filter 0.12s;
+          transition: filter var(--dur-fast, 0.12s), box-shadow var(--dur-fast, 0.12s);
+        }
+        .mo:hover:not(.locked):not(.dim):not(.dragging) {
+          filter: brightness(1.05);
+        }
+        .mo.dragging {
+          box-shadow: 0 16px 32px rgba(6, 18, 24, 0.38);
+          z-index: 5;
         }
         .face {
           position: absolute;
@@ -180,16 +199,18 @@ export default function MapObject({
         }
 
         /* ── Статусы. Отличаются и цветом, и заливкой,
-             чтобы их нельзя было спутать боковым зрением. ── */
+             чтобы их нельзя было спутать боковым зрением.
+             Значения берутся из globals.css (--free-fill и т.д.) —
+             единый источник вместо трёх независимых копий. ── */
         .st-free {
-          --fill: #ecfdf3;
-          --edge: #10b981;
-          --label: #05603a;
+          --fill: var(--free-fill, #ecfdf3);
+          --edge: var(--free-edge, #10b981);
+          --label: var(--free-label, #05603a);
         }
         .st-booked {
-          --fill: #fef7db;
-          --edge: #eab308;
-          --label: #6b4708;
+          --fill: var(--booked-fill, #fef7db);
+          --edge: var(--booked-edge, #eab308);
+          --label: var(--booked-label, #6b4708);
         }
         .st-booked .face {
           background-image: repeating-linear-gradient(
@@ -199,9 +220,9 @@ export default function MapObject({
           );
         }
         .st-busy {
-          --fill: #e11d48;
-          --edge: #9f1239;
-          --label: #ffffff;
+          --fill: var(--busy-fill, #e11d48);
+          --edge: var(--busy-edge, #9f1239);
+          --label: var(--busy-label, #ffffff);
         }
         .st-busy .face {
           background-image: linear-gradient(
@@ -214,9 +235,9 @@ export default function MapObject({
           opacity: 0.85;
         }
         .st-off {
-          --fill: #e2e8f0;
-          --edge: #94a3b8;
-          --label: #607484;
+          --fill: var(--off-fill, #e2e8f0);
+          --edge: var(--off-edge, #94a3b8);
+          --label: var(--off-label, #607484);
         }
         .st-off .txt {
           text-decoration: line-through;
@@ -247,7 +268,16 @@ export default function MapObject({
         .sh-octa.sel,
         .sh-diamond.sel {
           outline: none;
-          filter: drop-shadow(0 0 calc(var(--bw) * 3) #0d87a6);
+        }
+        /* ── Выделение для фигур с clip-path: outline не умеет повторять
+             форму, поэтому вместо блюра рисуем такой же "ореол", как
+             у рамки компании (.ring) — единый визуальный язык. ── */
+        .sel-glow {
+          position: absolute;
+          inset: calc(var(--bw) * -3.4);
+          background: var(--water, #0d87a6);
+          pointer-events: none;
+          z-index: -1;
         }
         .dim {
           filter: saturate(0.2) opacity(0.4);
@@ -259,3 +289,5 @@ export default function MapObject({
     </div>
   )
 }
+
+export default memo(MapObject)

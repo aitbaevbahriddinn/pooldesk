@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import MapObject from './MapObject'
 import TypeIcon from './TypeIcon'
+import IconButton from './ui/IconButton'
+import Button from './ui/Button'
 import {
   OBJECT_TYPES,
   PALETTE_GROUPS,
@@ -30,18 +32,25 @@ export default function MapEditor({ poolId, objects, setObjects, onSave, saveSta
   const [snapOn, setSnapOn] = useState(true)
   const [guides, setGuides] = useState([])
   const [marquee, setMarquee] = useState(null)
+  const [mobilePanel, setMobilePanel] = useState(null) // null | 'palette' | 'inspector' — только для узких экранов
+  const [isDragging, setIsDragging] = useState(false)
 
   const past = useRef([])
   const future = useRef([])
   const gesture = useRef(null)
   const viewportRef = useRef(null)
   const spaceRef = useRef(false)
+  const objectsRef = useRef(objects)
+  objectsRef.current = objects
+  const touchPoints = useRef(new Map())
 
   const selected = useMemo(
     () => objects.filter((o) => selection.includes(o.id)),
     [objects, selection]
   )
   const single = selected.length === 1 ? selected[0] : null
+  const numberClash =
+    !!single && objects.some((o) => o.id !== single.id && o.type === single.type && o.number === single.number)
 
   /* ── История ───────────────────────────────────────── */
   const commit = useCallback(
@@ -178,7 +187,42 @@ export default function MapEditor({ poolId, objects, setObjects, onSave, saveSta
   )
 
   /* ── Жесты ─────────────────────────────────────────── */
+  // Тач-жесты (пинч-зум, панорама одним пальцем по пустому холсту) —
+  // добавляются поверх мышиной логики ниже, не изменяя её: мышь и перо
+  // всегда попадают в button===1/spaceRef ветку или в существующую
+  // marquee-ветку, как и раньше.
   function onViewportPointerDown(e) {
+    if (e.pointerType === 'touch') {
+      touchPoints.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      if (touchPoints.current.size === 2) {
+        const r = viewportRef.current.getBoundingClientRect()
+        const pts = [...touchPoints.current.values()]
+        const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y)
+        gesture.current = {
+          kind: 'pinch',
+          startDist: dist || 1,
+          startZoom: view.zoom,
+          startMid: { x: (pts[0].x + pts[1].x) / 2 - r.left, y: (pts[0].y + pts[1].y) / 2 - r.top },
+          startView: { x: view.x, y: view.y },
+        }
+        setMarquee(null)
+        try {
+          viewportRef.current.setPointerCapture(e.pointerId)
+        } catch {}
+        return
+      }
+      if (
+        touchPoints.current.size === 1 &&
+        !tool &&
+        !e.target.closest('.mo') &&
+        !e.target.closest('.handle')
+      ) {
+        gesture.current = { kind: 'pan', sx: e.clientX, sy: e.clientY, ox: view.x, oy: view.y }
+        viewportRef.current.setPointerCapture(e.pointerId)
+        return
+      }
+    }
+
     if (e.button === 1 || spaceRef.current) {
       gesture.current = { kind: 'pan', sx: e.clientX, sy: e.clientY, ox: view.x, oy: view.y }
       viewportRef.current.setPointerCapture(e.pointerId)
@@ -227,6 +271,19 @@ export default function MapEditor({ poolId, objects, setObjects, onSave, saveSta
     viewportRef.current.setPointerCapture(e.pointerId)
   }
 
+  // Стабильная ссылка для .mo onPointerDown — без неё React.memo(MapObject)
+  // не помогает, т.к. инлайн-стрелка `(e) => onObjectPointerDown(e, o)`
+  // создавалась бы заново на каждый рендер для каждого объекта.
+  // Сама логика onObjectPointerDown не меняется, меняется только то,
+  // как обработчик получает объект (по data-id вместо замыкания).
+  const objectPointerDownRef = useRef(onObjectPointerDown)
+  objectPointerDownRef.current = onObjectPointerDown
+  const handleObjectPointerDown = useCallback((e) => {
+    const id = e.currentTarget.getAttribute('data-id')
+    const obj = objectsRef.current.find((o) => o.id === id)
+    if (obj) objectPointerDownRef.current(e, obj)
+  }, [])
+
   function onHandlePointerDown(e, dir) {
     e.stopPropagation()
     if (!single || single.locked) return
@@ -243,8 +300,29 @@ export default function MapEditor({ poolId, objects, setObjects, onSave, saveSta
   }
 
   function onPointerMove(e) {
+    if (e.pointerType === 'touch' && touchPoints.current.has(e.pointerId)) {
+      touchPoints.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+    }
+
     const g = gesture.current
     if (!g) return
+
+    if (g.kind === 'pinch') {
+      const pts = [...touchPoints.current.values()]
+      if (pts.length < 2) return
+      const r = viewportRef.current.getBoundingClientRect()
+      const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) || 1
+      const mid = { x: (pts[0].x + pts[1].x) / 2 - r.left, y: (pts[0].y + pts[1].y) / 2 - r.top }
+      const zoom = clamp(g.startZoom * (dist / g.startDist), 0.15, 3)
+      const k = zoom / g.startZoom
+      setView({
+        zoom,
+        x: g.startMid.x - (g.startMid.x - g.startView.x) * k + (mid.x - g.startMid.x),
+        y: g.startMid.y - (g.startMid.y - g.startView.y) * k + (mid.y - g.startMid.y),
+      })
+      return
+    }
+
     const w = toWorld(e)
 
     if (g.kind === 'pan') {
@@ -280,6 +358,7 @@ export default function MapEditor({ poolId, objects, setObjects, onSave, saveSta
         gl = res.lines
       }
       setGuides(gl)
+      if (!g.moved) setIsDragging(true)
       g.moved = true
       setObjects(
         objects.map((o) => {
@@ -326,9 +405,11 @@ export default function MapEditor({ poolId, objects, setObjects, onSave, saveSta
   }
 
   function onPointerUp(e) {
+    touchPoints.current.delete(e.pointerId)
     const g = gesture.current
     gesture.current = null
     setGuides([])
+    setIsDragging(false)
     if (!g) return
     try {
       viewportRef.current.releasePointerCapture(e.pointerId)
@@ -437,8 +518,30 @@ export default function MapEditor({ poolId, objects, setObjects, onSave, saveSta
 
   return (
     <div className="editor">
+      {/* ── Затемнение и переключатели для мобильных панелей ── */}
+      {mobilePanel && (
+        <div className="mobile-backdrop" onClick={() => setMobilePanel(null)} />
+      )}
+      <div className="mobile-toggles">
+        <Button
+          variant={mobilePanel === 'palette' ? 'primary' : 'ghost'}
+          size="sm"
+          onClick={() => setMobilePanel((p) => (p === 'palette' ? null : 'palette'))}
+        >
+          <TypeIcon name="rect" size={15} /> Объекты
+        </Button>
+        <Button
+          variant={mobilePanel === 'inspector' ? 'primary' : 'ghost'}
+          size="sm"
+          onClick={() => setMobilePanel((p) => (p === 'inspector' ? null : 'inspector'))}
+        >
+          Свойства{selected.length > 0 ? ` (${selected.length})` : ''}
+        </Button>
+      </div>
+
       {/* ── Палитра ── */}
-      <aside className="palette chrome">
+      <aside className={`palette chrome mobile-drawer ${mobilePanel === 'palette' ? 'mobile-open' : ''}`}>
+        <div className="drawer-handle mobile-only" />
         <div className="pal-head">
           <span className="eyebrow">Добавить объект</span>
           <p className="tiny muted" style={{ marginTop: 4 }}>
@@ -492,7 +595,8 @@ export default function MapEditor({ poolId, objects, setObjects, onSave, saveSta
               obj={o}
               zoom={view.zoom}
               selected={selection.includes(o.id)}
-              onPointerDown={(e) => onObjectPointerDown(e, o)}
+              dragging={isDragging && selection.includes(o.id)}
+              onPointerDown={handleObjectPointerDown}
             />
           ))}
 
@@ -536,41 +640,38 @@ export default function MapEditor({ poolId, objects, setObjects, onSave, saveSta
             Привязка
           </label>
           <span className="sep" />
-          <button className="btn btn-quiet" onClick={undo} title="Ctrl+Z">
-            ↺ Отменить
-          </button>
-          <button className="btn btn-quiet" onClick={redo} title="Ctrl+Shift+Z">
-            ↻ Повторить
-          </button>
+          <IconButton icon="undo" label="Отменить (Ctrl+Z)" onClick={undo} />
+          <IconButton icon="redo" label="Повторить (Ctrl+Shift+Z)" onClick={redo} />
           <span className="sep" />
-          <span className="tiny muted">
+          <span className="tiny muted count-label">
             Мест для гостей: <b>{bookableCount}</b> · объектов: {objects.length}
           </span>
           <span className="grow" />
-          <span className={`save ${saveState}`}>
+          <span className={`save ${saveState}`} role="status" aria-live="polite">
             {saveState === 'saving' ? 'Сохраняем…' : saveState === 'error' ? 'Ошибка сохранения' : 'Сохранено'}
           </span>
           <span className="sep" />
-          <button
-            className="btn btn-quiet"
+          <IconButton
+            icon="minus"
+            size={15}
+            label="Уменьшить масштаб"
             onClick={() => setView((v) => ({ ...v, zoom: clamp(v.zoom * 0.85, 0.15, 3) }))}
-          >
-            −
-          </button>
+          />
           <span className="tiny muted" style={{ minWidth: 42, textAlign: 'center' }}>
             {Math.round(view.zoom * 100)}%
           </span>
-          <button
-            className="btn btn-quiet"
+          <IconButton
+            icon="plus"
+            size={15}
+            label="Увеличить масштаб"
             onClick={() => setView((v) => ({ ...v, zoom: clamp(v.zoom * 1.18, 0.15, 3) }))}
-          >
-            +
-          </button>
+          />
         </div>
       </div>
 
       {/* ── Инспектор ── */}
-      <aside className="inspector chrome">
+      <aside className={`inspector chrome mobile-drawer ${mobilePanel === 'inspector' ? 'mobile-open' : ''}`}>
+        <div className="drawer-handle mobile-only" />
         {!selected.length && (
           <div className="insp-empty">
             <span className="eyebrow">Свойства</span>
@@ -607,11 +708,14 @@ export default function MapEditor({ poolId, objects, setObjects, onSave, saveSta
             <h3 style={{ margin: '6px 0 18px' }}>{objectName(single)}</h3>
 
             <div className="field">
-              <label>Номер</label>
+              <label htmlFor="obj-number">Номер</label>
               <input
+                id="obj-number"
                 className="input"
                 type="number"
                 value={single.number}
+                aria-invalid={numberClash || undefined}
+                aria-describedby={numberClash ? 'obj-number-err' : undefined}
                 onChange={(e) => {
                   const n = parseInt(e.target.value, 10)
                   if (Number.isNaN(n)) return
@@ -623,9 +727,11 @@ export default function MapEditor({ poolId, objects, setObjects, onSave, saveSta
                   onSave()
                 }}
               />
-              {objects.some(
-                (o) => o.id !== single.id && o.type === single.type && o.number === single.number
-              ) && <p className="tiny err">Такой номер уже занят</p>}
+              {numberClash && (
+                <p className="tiny err" id="obj-number-err" role="alert">
+                  Такой номер уже занят
+                </p>
+              )}
             </div>
 
             <div className="field">
@@ -1014,12 +1120,67 @@ export default function MapEditor({ poolId, objects, setObjects, onSave, saveSta
           background: #fdeaea;
           border-color: var(--busy);
         }
-        @media (max-width: 1080px) {
+
+        /* ── Мобильные версии палитры/инспектора: выдвижные
+             панели снизу вместо полного скрытия. Правила ниже
+             действуют только под медиа-запросом — десктоп не
+             затрагивается. ── */
+        .mobile-toggles,
+        .mobile-backdrop {
+          display: none;
+        }
+        .drawer-handle.mobile-only {
+          display: none;
+        }
+        @media (max-width: 1024px) {
           .editor {
-            grid-template-columns: 172px 1fr;
+            grid-template-columns: 1fr;
           }
+          .mobile-toggles {
+            display: flex;
+            gap: 8px;
+            position: fixed;
+            left: 12px;
+            right: 12px;
+            bottom: 64px;
+            z-index: 42;
+            justify-content: center;
+          }
+          .statusbar {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+          }
+          .mobile-toggles :global(.btn) {
+            flex: 1;
+            max-width: 220px;
+          }
+          .mobile-backdrop {
+            display: block;
+            position: fixed;
+            inset: 0;
+            background: rgba(13, 27, 33, 0.32);
+            z-index: 40;
+          }
+          .palette,
           .inspector {
-            display: none;
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            max-height: 75vh;
+            border-radius: var(--r-lg) var(--r-lg) 0 0;
+            box-shadow: var(--shadow-3);
+            transform: translateY(100%);
+            transition: transform var(--dur-base) var(--ease);
+            z-index: 41;
+            border: none !important;
+          }
+          .palette.mobile-open,
+          .inspector.mobile-open {
+            transform: translateY(0);
+          }
+          .drawer-handle.mobile-only {
+            display: block;
           }
         }
       `}</style>
@@ -1096,6 +1257,16 @@ function Handles({ obj, zoom, onDown }) {
         .rot {
           border-radius: 50%;
           background: var(--water);
+        }
+        /* На тач-устройствах видимый размер ручек не меняем (точность
+           для мыши важнее), но расширяем область попадания невидимым
+           псевдоэлементом — иначе 9px слишком мелко для пальца. */
+        @media (pointer: coarse) {
+          .handle::before {
+            content: '';
+            position: absolute;
+            inset: -11px;
+          }
         }
       `}</style>
     </div>

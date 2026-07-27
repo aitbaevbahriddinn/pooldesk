@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '../../lib/supabaseClient'
+import Button from '../../components/ui/Button'
 
 const MESSAGES = {
   'Invalid login credentials': 'Неверная почта или пароль',
@@ -92,11 +93,15 @@ export default function LoginPage() {
               />
             </div>
 
-            {error && <div className="notice notice-error">{error}</div>}
+            {error && (
+              <div className="notice notice-error" role="alert">
+                {error}
+              </div>
+            )}
 
-            <button className="btn btn-primary btn-block" type="submit" disabled={busy}>
-              {busy ? 'Подождите…' : mode === 'signup' ? 'Создать аккаунт' : 'Войти'}
-            </button>
+            <Button variant="primary" block type="submit" loading={busy} loadingText="Подождите…">
+              {mode === 'signup' ? 'Создать аккаунт' : 'Войти'}
+            </Button>
           </form>
 
           <p className="switch">
@@ -193,7 +198,7 @@ export default function LoginPage() {
           text-decoration: underline;
           text-underline-offset: 2px;
         }
-        @media (max-width: 820px) {
+        @media (max-width: 768px) {
           .auth {
             grid-template-columns: 1fr;
           }
