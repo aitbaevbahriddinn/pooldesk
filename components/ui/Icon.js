@@ -20,6 +20,10 @@ const PATHS = {
   check: 'M5 12l5 5L20 7',
   alertTriangle: 'M12 3l10 18H2zM12 10v4M12 17.5v.01',
   panel: 'M4 5h16v14H4zM14 5v14',
+  expand: 'M9 4H4v5M15 4h5v5M9 20H4v-5M15 20h5v-5',
+  collapse: 'M4 9h5V4M15 4v5h5M4 15h5v5M20 15h-5v5',
+  calendar: 'M4 5h16v15H4zM4 9h16M8 3v4M16 3v4',
+  users: 'M8 12a3 3 0 100-6 3 3 0 100 6zM2 20c0-3.5 2.5-6 6-6s6 2.5 6 6M16 8a2.6 2.6 0 010 5M18 14c2 .5 3.5 2.3 3.5 6',
 }
 
 export default function Icon({ name, size = 18, stroke = 1.8, className }) {

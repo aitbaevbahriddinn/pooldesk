@@ -424,6 +424,27 @@ p { margin: 0; }
   from { opacity: 0; transform: translateY(10px) scale(0.98); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
+
+/* ── Модальное окно-панель: выезжает справа во всю высоту,
+     а не всплывает по центру. На узких экранах full-screen-sm
+     ниже всё равно берёт верх (лист снизу). ── */
+.modal-backdrop.position-right {
+  justify-content: flex-end;
+  align-items: stretch;
+  padding: 0;
+}
+.modal-sheet.position-right {
+  max-width: 420px !important;
+  width: 100%;
+  height: 100%;
+  border-radius: var(--r-lg) 0 0 var(--r-lg);
+  overflow-y: auto;
+  animation-name: modal-sheet-in-right;
+}
+@keyframes modal-sheet-in-right {
+  from { opacity: 0; transform: translateX(24px); }
+  to { opacity: 1; transform: translateX(0); }
+}
 @media (max-width: 640px) {
   .modal-backdrop.full-screen-sm {
     padding: 0;

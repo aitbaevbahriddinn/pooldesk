@@ -33,6 +33,8 @@ export default function PoolPage({ params }) {
   const [mode, setMode] = useState('editor')
   const [saveState, setSaveState] = useState('saved')
   const [fatal, setFatal] = useState('')
+  const [fullscreen, setFullscreen] = useState(false)
+  const shellRef = useRef(null)
 
   const router = useRouter()
   const supabase = createClient()
@@ -117,35 +119,73 @@ export default function PoolPage({ params }) {
 
   useEffect(() => () => clearTimeout(timer.current), [])
 
+  /* ── Полноэкранный режим карты ──────────────────────────
+     Прячет верхнюю шапку (назад/название/вкладки) и по возможности
+     запрашивает реальный Fullscreen API — если браузер отклонит запрос
+     (например, во встроенном превью), интерфейс всё равно раскрывается
+     на всю страницу, просто без системного полноэкранного режима. */
+  const toggleFullscreen = useCallback(() => {
+    setFullscreen((v) => {
+      const next = !v
+      if (next) {
+        shellRef.current?.requestFullscreen?.().catch(() => {})
+      } else if (document.fullscreenElement) {
+        document.exitFullscreen?.().catch(() => {})
+      }
+      return next
+    })
+  }, [])
+
+  useEffect(() => {
+    const onFsChange = () => setFullscreen(!!document.fullscreenElement)
+    document.addEventListener('fullscreenchange', onFsChange)
+    return () => document.removeEventListener('fullscreenchange', onFsChange)
+  }, [])
+
+  useEffect(() => {
+    if (!fullscreen) return
+    // Настоящий Fullscreen API уже обрабатывает Esc сам (сработает
+    // fullscreenchange выше) — этот обработчик нужен только на случай,
+    // если браузер отклонил запрос и мы остались в «имитации» полного
+    // экрана (шапка скрыта, но document.fullscreenElement пуст).
+    const onKey = (e) => {
+      if (e.key === 'Escape' && !document.fullscreenElement) setFullscreen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [fullscreen])
+
   if (loading) {
     return <LoadingScreen label="Загрузка карты…" />
   }
 
   return (
-    <div className="shell">
-      <header className="bar chrome">
-        <div className="left">
-          <Link href="/" className="back">
-            <Icon name="arrowLeft" size={16} />
-            <span className="back-label">Бассейны</span>
-          </Link>
-          <span className="divider" />
-          <h2>{pool?.name}</h2>
-        </div>
+    <div className="shell" ref={shellRef}>
+      {!fullscreen && (
+        <header className="bar chrome">
+          <div className="left">
+            <Link href="/" className="back">
+              <Icon name="arrowLeft" size={16} />
+              <span className="back-label">Бассейны</span>
+            </Link>
+            <span className="divider" />
+            <h2>{pool?.name}</h2>
+          </div>
 
-        <Tabs
-          items={[
-            { value: 'board', label: 'Карта' },
-            { value: 'editor', label: 'Редактор' },
-          ]}
-          value={mode}
-          onChange={setMode}
-        />
+          <Tabs
+            items={[
+              { value: 'board', label: 'Карта' },
+              { value: 'editor', label: 'Редактор' },
+            ]}
+            value={mode}
+            onChange={setMode}
+          />
 
-        <div className="right">
-          {fatal && <span className="fatal tiny">{fatal}</span>}
-        </div>
-      </header>
+          <div className="right">
+            {fatal && <span className="fatal tiny">{fatal}</span>}
+          </div>
+        </header>
+      )}
 
       <main className="body">
         {mode === 'editor' ? (
@@ -155,9 +195,17 @@ export default function PoolPage({ params }) {
             setObjects={setObjects}
             onSave={requestSave}
             saveState={saveState}
+            fullscreen={fullscreen}
+            onToggleFullscreen={toggleFullscreen}
           />
         ) : (
-          <MapBoard poolId={poolId} objects={objects} onEdit={() => setMode('editor')} />
+          <MapBoard
+            poolId={poolId}
+            objects={objects}
+            onEdit={() => setMode('editor')}
+            fullscreen={fullscreen}
+            onToggleFullscreen={toggleFullscreen}
+          />
         )}
       </main>
 

@@ -3,9 +3,10 @@
 import { useState } from 'react'
 import Modal from './ui/Modal'
 import Button from './ui/Button'
+import Icon from './ui/Icon'
 import { plural } from '../lib/format'
 
-export default function VisitDialog({ mode, seatNames, initial, onCancel, onSubmit }) {
+export default function VisitDialog({ mode, seatNames, dateLabel, initial, onCancel, onSubmit }) {
   const [guest, setGuest] = useState(initial?.guest_name || '')
   const [phone, setPhone] = useState(initial?.phone || '')
   const [arrival, setArrival] = useState((initial?.arrival_time || '').slice(0, 5))
@@ -35,7 +36,7 @@ export default function VisitDialog({ mode, seatNames, initial, onCancel, onSubm
   }
 
   return (
-    <Modal onClose={onCancel} labelledBy="visit-dialog-title" maxWidth={470}>
+    <Modal onClose={onCancel} labelledBy="visit-dialog-title" position="right">
       <div className="dialog-body">
         <span className="eyebrow">
           {mode === 'edit' ? 'Изменить бронь' : seating ? 'Посадить гостей' : 'Новая бронь'}
@@ -43,7 +44,16 @@ export default function VisitDialog({ mode, seatNames, initial, onCancel, onSubm
         <h2 id="visit-dialog-title" style={{ margin: '6px 0 4px' }}>
           {seatNames.length} {plural(seatNames.length, 'место', 'места', 'мест')}
         </h2>
-        <p className="tiny muted seats">{seatNames.join(' · ')}</p>
+        {dateLabel && (
+          <p className="tiny muted date-row">
+            <Icon name="calendar" size={14} /> {dateLabel}
+          </p>
+        )}
+        <ul className="seats">
+          {seatNames.map((name, i) => (
+            <li key={i}>{name}</li>
+          ))}
+        </ul>
 
         <form onSubmit={submit}>
           <div className="two">
@@ -129,11 +139,35 @@ export default function VisitDialog({ mode, seatNames, initial, onCancel, onSubm
       <style jsx>{`
         .dialog-body {
           padding: 26px;
+          display: flex;
+          flex-direction: column;
+          min-height: 100%;
+        }
+        .date-row {
+          display: flex;
+          align-items: center;
+          gap: 6px;
         }
         .seats {
-          margin-bottom: 20px;
-          padding-bottom: 16px;
+          list-style: none;
+          margin: 14px 0 20px;
+          padding: 0;
+          border: 1px solid var(--line);
+          border-radius: var(--r-md);
+          overflow: hidden;
+        }
+        .seats li {
+          padding: 8px 12px;
+          font-size: 13px;
+          background: var(--surface-2);
+        }
+        .seats li:not(:last-child) {
           border-bottom: 1px solid var(--line);
+        }
+        form {
+          display: flex;
+          flex-direction: column;
+          flex: 1;
         }
         .two {
           display: grid;
@@ -144,7 +178,8 @@ export default function VisitDialog({ mode, seatNames, initial, onCancel, onSubm
           display: flex;
           justify-content: flex-end;
           gap: 8px;
-          margin-top: 8px;
+          margin-top: auto;
+          padding-top: 16px;
         }
         @media (max-width: 640px) {
           .two {

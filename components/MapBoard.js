@@ -29,7 +29,7 @@ const VISIT_FIELDS =
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v))
 
-export default function MapBoard({ poolId, objects, onEdit }) {
+export default function MapBoard({ poolId, objects, onEdit, fullscreen = false, onToggleFullscreen }) {
   const supabase = createClient()
   const [date, setDate] = useState(todayStr)
   const [visits, setVisits] = useState([])
@@ -335,6 +335,24 @@ export default function MapBoard({ poolId, objects, onEdit }) {
         </div>
 
         <Gauge counts={counts} />
+
+        <div className="daybar-acts">
+          <Button
+            variant={sidePanelOpen ? 'primary' : 'ghost'}
+            size="sm"
+            onClick={() => setSidePanelOpen((v) => !v)}
+          >
+            <Icon name="panel" size={15} /> Визиты дня
+            {counts.total > 0 && active.length > 0 && <span className="count-badge">{active.length}</span>}
+          </Button>
+          {onToggleFullscreen && (
+            <IconButton
+              icon={fullscreen ? 'collapse' : 'expand'}
+              label={fullscreen ? 'Свернуть карту' : 'Открыть карту полностью'}
+              onClick={onToggleFullscreen}
+            />
+          )}
+        </div>
       </div>
 
       {/* ── Карта ── */}
@@ -400,16 +418,13 @@ export default function MapBoard({ poolId, objects, onEdit }) {
           )}
         </div>
 
-        {/* ── Панель справа (на мобильных — выдвижная снизу) ── */}
-        {sidePanelOpen && <div className="mobile-backdrop" onClick={() => setSidePanelOpen(false)} />}
-        <IconButton
-          icon="panel"
-          label={sidePanelOpen ? 'Скрыть панель визитов' : 'Показать панель визитов'}
-          className="side-toggle"
-          onClick={() => setSidePanelOpen((v) => !v)}
-        />
-        <aside className={`side chrome mobile-drawer ${sidePanelOpen ? 'mobile-open' : ''}`}>
+        {/* ── Панель «Визиты дня» — выдвигается сбоку (десктоп) или снизу (моб.) ── */}
+        {sidePanelOpen && <div className="panel-backdrop" onClick={() => setSidePanelOpen(false)} />}
+        <aside className={`side chrome ${sidePanelOpen ? 'open' : ''}`}>
           <div className="drawer-handle mobile-only" />
+          <div className="side-close-row mobile-only">
+            <IconButton icon="close" label="Закрыть" onClick={() => setSidePanelOpen(false)} />
+          </div>
           {activeVisit ? (
             <VisitPanel
               visit={activeVisit}
@@ -474,6 +489,7 @@ export default function MapBoard({ poolId, objects, onEdit }) {
         <VisitDialog
           mode={dialog.mode}
           initial={dialog.mode === 'edit' ? activeVisit : null}
+          dateLabel={dialog.mode === 'edit' ? humanDate(activeVisit.visit_date) : humanDate(date)}
           seatNames={
             dialog.mode === 'edit'
               ? (activeVisit.visit_objects || [])
@@ -502,9 +518,10 @@ export default function MapBoard({ poolId, objects, onEdit }) {
           flex: none;
           border-bottom-color: #0a1920 !important;
           display: flex;
+          flex-wrap: wrap;
           align-items: center;
           justify-content: space-between;
-          gap: 20px;
+          gap: 10px 20px;
           padding: 8px 14px;
           background: var(--surface);
           border-bottom: 1px solid var(--line);
@@ -528,14 +545,32 @@ export default function MapBoard({ poolId, objects, onEdit }) {
           color: var(--ink-2);
           margin-left: 4px;
         }
+        .daybar-acts {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        .daybar-acts .count-badge {
+          display: inline-grid;
+          place-items: center;
+          min-width: 16px;
+          height: 16px;
+          padding: 0 4px;
+          border-radius: var(--r-full);
+          background: rgba(255, 255, 255, 0.25);
+          font-size: 10px;
+          font-weight: 700;
+        }
         .main {
+          position: relative;
           flex: 1;
           min-height: 0;
-          display: grid;
-          grid-template-columns: 1fr 288px;
+          display: flex;
         }
         .viewport {
           position: relative;
+          flex: 1;
+          min-width: 0;
           overflow: hidden;
           background: radial-gradient(120% 90% at 50% 0%, #f0f4f6 0%, #dde5e9 100%);
           touch-action: none;
@@ -579,11 +614,31 @@ export default function MapBoard({ poolId, objects, onEdit }) {
         .nomap :global(.box) {
           max-width: 400px;
         }
+        /* ── Панель «Визиты дня»: справа поверх карты на десктопе,
+             снизу листом на узких экранах (см. медиа-запрос ниже) ── */
         .side {
+          position: absolute;
+          top: 0;
+          right: 0;
+          bottom: 0;
+          width: min(360px, 100%);
           border-left: 1px solid #0a1920;
           background: var(--surface);
           overflow-y: auto;
-          min-height: 0;
+          transform: translateX(100%);
+          transition: transform var(--dur-base) var(--ease);
+          box-shadow: var(--shadow-3);
+          z-index: 15;
+        }
+        .side.open {
+          transform: translateX(0);
+        }
+        .drawer-handle.mobile-only,
+        .side-close-row.mobile-only {
+          display: none;
+        }
+        .panel-backdrop {
+          display: none;
         }
         .actionbar {
           position: absolute;
@@ -617,19 +672,7 @@ export default function MapBoard({ poolId, objects, onEdit }) {
           display: flex;
           gap: 6px;
         }
-        .side-toggle {
-          display: none;
-        }
-        .mobile-backdrop {
-          display: none;
-        }
-        .drawer-handle.mobile-only {
-          display: none;
-        }
         @media (max-width: 1024px) {
-          .main {
-            grid-template-columns: 1fr;
-          }
           .actionbar {
             max-width: calc(100% - 24px);
             bottom: 76px;
@@ -638,15 +681,7 @@ export default function MapBoard({ poolId, objects, onEdit }) {
             top: 12px;
             bottom: auto;
           }
-          .side-toggle {
-            display: grid;
-            position: fixed;
-            right: 12px;
-            bottom: 12px;
-            z-index: 42;
-            box-shadow: var(--shadow-2);
-          }
-          .mobile-backdrop {
+          .panel-backdrop {
             display: block;
             position: fixed;
             inset: 0;
@@ -657,20 +692,25 @@ export default function MapBoard({ poolId, objects, onEdit }) {
             position: fixed;
             left: 0;
             right: 0;
+            top: auto;
             bottom: 0;
+            width: auto;
             max-height: 75vh;
             border-left: none;
             border-radius: var(--r-lg) var(--r-lg) 0 0;
-            box-shadow: var(--shadow-3);
             transform: translateY(100%);
-            transition: transform var(--dur-base) var(--ease);
             z-index: 41;
           }
-          .side.mobile-open {
+          .side.open {
             transform: translateY(0);
           }
           .drawer-handle.mobile-only {
             display: block;
+          }
+          .side-close-row.mobile-only {
+            display: flex;
+            justify-content: flex-end;
+            padding: 6px 6px 0;
           }
         }
       `}</style>

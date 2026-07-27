@@ -8,7 +8,15 @@ const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), selec
 // (VisitDialog) собирал backdrop/sheet вручную, без focus-trap и без
 // возврата фокуса на триггер. Логика подтверждения/отправки формы остаётся
 // снаружи — этот компонент отвечает только за открытие/закрытие/фокус.
-export default function Modal({ open = true, onClose, labelledBy, fullScreenOnMobile = true, maxWidth = 470, children }) {
+export default function Modal({
+  open = true,
+  onClose,
+  labelledBy,
+  fullScreenOnMobile = true,
+  maxWidth = 470,
+  position = 'center', // 'center' | 'right'
+  children,
+}) {
   const sheetRef = useRef(null)
   const triggerRef = useRef(null)
 
@@ -49,16 +57,16 @@ export default function Modal({ open = true, onClose, labelledBy, fullScreenOnMo
 
   return (
     <div
-      className={`modal-backdrop ${fullScreenOnMobile ? 'full-screen-sm' : ''}`}
+      className={`modal-backdrop ${position === 'right' ? 'position-right' : ''} ${fullScreenOnMobile ? 'full-screen-sm' : ''}`}
       onPointerDown={(e) => e.target === e.currentTarget && onClose?.()}
     >
       <div
         ref={sheetRef}
-        className={`modal-sheet card ${fullScreenOnMobile ? 'full-screen-sm' : ''}`}
+        className={`modal-sheet card ${position === 'right' ? 'position-right' : ''} ${fullScreenOnMobile ? 'full-screen-sm' : ''}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby={labelledBy}
-        style={{ maxWidth }}
+        style={position === 'right' ? undefined : { maxWidth }}
       >
         {children}
       </div>

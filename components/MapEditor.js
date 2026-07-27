@@ -24,7 +24,15 @@ const HISTORY_LIMIT = 60
 const snapTo = (v) => Math.round(v / GRID) * GRID
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v))
 
-export default function MapEditor({ poolId, objects, setObjects, onSave, saveState }) {
+export default function MapEditor({
+  poolId,
+  objects,
+  setObjects,
+  onSave,
+  saveState,
+  fullscreen = false,
+  onToggleFullscreen,
+}) {
   const [selection, setSelection] = useState([])
   const [tool, setTool] = useState(null)
   const [view, setView] = useState({ x: 40, y: 40, zoom: 0.75 })
@@ -666,6 +674,16 @@ export default function MapEditor({ poolId, objects, setObjects, onSave, saveSta
             label="Увеличить масштаб"
             onClick={() => setView((v) => ({ ...v, zoom: clamp(v.zoom * 1.18, 0.15, 3) }))}
           />
+          {onToggleFullscreen && (
+            <>
+              <span className="sep" />
+              <IconButton
+                icon={fullscreen ? 'collapse' : 'expand'}
+                label={fullscreen ? 'Свернуть карту' : 'Открыть карту полностью'}
+                onClick={onToggleFullscreen}
+              />
+            </>
+          )}
         </div>
       </div>
 
