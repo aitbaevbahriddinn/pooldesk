@@ -4,9 +4,9 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import MapEditor from '../../../components/MapEditor'
-import MapObject from '../../../components/MapObject'
+import MapBoard from '../../../components/MapBoard'
 import { createClient } from '../../../lib/supabaseClient'
-import { typeOf } from '../../../lib/objectTypes'
+
 
 const COLUMNS =
   'id, pool_id, type, number, label, seats, x, y, width, height, rotation, is_bookable, is_available, locked, note'
@@ -153,7 +153,7 @@ export default function PoolPage({ params }) {
             saveState={saveState}
           />
         ) : (
-          <BoardPreview objects={objects} onEdit={() => setMode('editor')} />
+          <MapBoard poolId={poolId} objects={objects} onEdit={() => setMode('editor')} />
         )}
       </main>
 
@@ -232,141 +232,6 @@ export default function PoolPage({ params }) {
         .body {
           flex: 1;
           min-height: 0;
-        }
-      `}</style>
-    </div>
-  )
-}
-
-/* Предпросмотр карты: пока без броней — все места показаны свободными */
-function BoardPreview({ objects, onEdit }) {
-  const seats = objects.filter((o) => typeOf(o.type).bookable)
-
-  if (!objects.length) {
-    return (
-      <div className="empty">
-        <div className="card box">
-          <h3 style={{ marginBottom: 6 }}>Карта ещё не нарисована</h3>
-          <p className="muted tiny" style={{ marginBottom: 18 }}>
-            Перейдите в редактор и расставьте лежаки, столы и зоны — карта станет главным
-            экраном смены.
-          </p>
-          <button className="btn btn-primary" onClick={onEdit}>
-            Открыть редактор
-          </button>
-        </div>
-        <style jsx>{`
-          .empty {
-            height: 100%;
-            display: grid;
-            place-items: center;
-            padding: 24px;
-          }
-          .box {
-            padding: 30px;
-            max-width: 400px;
-            text-align: center;
-          }
-        `}</style>
-      </div>
-    )
-  }
-
-  return (
-    <div className="board">
-      <div className="banner">
-        <b>Предпросмотр.</b> Бронирование и статусы подключаем следующим шагом — сейчас все
-        места показаны свободными.
-      </div>
-      <div className="scene">
-        <div className="world">
-          {objects.map((o) => (
-            <MapObject
-              key={o.id}
-              obj={o}
-              zoom={0.62}
-              status={
-                typeOf(o.type).bookable ? (o.is_available ? 'free' : 'off') : null
-              }
-            />
-          ))}
-        </div>
-      </div>
-      <div className="legend">
-        <span>
-          <i className="d free" /> Свободно · {seats.filter((s) => s.is_available).length}
-        </span>
-        <span>
-          <i className="d booked" /> Забронировано · 0
-        </span>
-        <span>
-          <i className="d busy" /> Занято · 0
-        </span>
-        <span>
-          <i className="d off" /> Недоступно · {seats.filter((s) => !s.is_available).length}
-        </span>
-      </div>
-
-      <style jsx>{`
-        .board {
-          display: flex;
-          flex-direction: column;
-          height: 100%;
-          min-height: 0;
-        }
-        .banner {
-          flex: none;
-          padding: 9px 16px;
-          font-size: 13px;
-          color: #7a5a05;
-          background: #fdf6e3;
-          border-bottom: 1px solid #f0e3bf;
-        }
-        .scene {
-          flex: 1;
-          min-height: 0;
-          overflow: auto;
-          background: var(--deck);
-          padding: 24px;
-        }
-        .world {
-          position: relative;
-          width: 4000px;
-          height: 3000px;
-          transform: scale(0.62);
-          transform-origin: 0 0;
-          background: #fbfcfc;
-          border: 1px solid var(--line);
-          border-radius: var(--r-md);
-        }
-        .legend {
-          flex: none;
-          display: flex;
-          gap: 20px;
-          padding: 10px 16px;
-          background: var(--surface);
-          border-top: 1px solid var(--line);
-          font-size: 12px;
-          color: var(--ink-2);
-        }
-        .d {
-          display: inline-block;
-          width: 9px;
-          height: 9px;
-          border-radius: 2px;
-          margin-right: 6px;
-        }
-        .free {
-          background: var(--free);
-        }
-        .booked {
-          background: var(--booked);
-        }
-        .busy {
-          background: var(--busy);
-        }
-        .off {
-          background: var(--off);
         }
       `}</style>
     </div>
