@@ -2,12 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import MapObject from './MapObject'
+import TypeIcon from './TypeIcon'
 import {
   OBJECT_TYPES,
   PALETTE_GROUPS,
+  SHAPES,
   newId,
   nextNumber,
   objectName,
+  shapeOf,
   typeOf,
 } from '../lib/objectTypes'
 
@@ -88,6 +91,7 @@ export default function MapEditor({ poolId, objects, setObjects, onSave, saveSta
         type,
         number: nextNumber(objects, type),
         label: null,
+        shape: null,
         seats: t.seats ?? null,
         x: snapTo(at.x - t.w / 2),
         y: snapTo(at.y - t.h / 2),
@@ -454,7 +458,9 @@ export default function MapEditor({ poolId, objects, setObjects, onSave, saveSta
                     className={`pal-item ${tool === key ? 'on' : ''}`}
                     onClick={() => setTool(tool === key ? null : key)}
                   >
-                    <span className={`swatch sw-${t.shape}`} />
+                    <span className="pico">
+                      <TypeIcon name={t.icon} size={17} />
+                    </span>
                     {t.label}
                   </button>
                 ))}
@@ -677,6 +683,24 @@ export default function MapEditor({ poolId, objects, setObjects, onSave, saveSta
             </div>
 
             <div className="field">
+              <label>Форма</label>
+              <div className="shapes">
+                {SHAPES.map((sh) => (
+                  <button
+                    key={sh.id}
+                    type="button"
+                    title={sh.label}
+                    className={`shp sp-${sh.id} ${shapeOf(single) === sh.id ? 'on' : ''}`}
+                    onClick={() => {
+                      patch([single.id], { shape: sh.id })
+                      onSave()
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <div className="field">
               <label>Поворот, °</label>
               <input
                 className="input"
@@ -799,22 +823,20 @@ export default function MapEditor({ poolId, objects, setObjects, onSave, saveSta
           color: var(--water-deep);
           font-weight: 600;
         }
-        .swatch {
-          width: 15px;
-          height: 15px;
+        .pico {
+          display: grid;
+          place-items: center;
+          width: 26px;
+          height: 26px;
           flex: none;
-          background: rgba(232, 239, 242, 0.16);
-          border: 1.5px solid var(--ink-3);
+          color: var(--ink-2);
+          background: rgba(232, 239, 242, 0.07);
+          border: 1px solid var(--line);
+          border-radius: 7px;
         }
-        .sw-rounded {
-          border-radius: 3px;
-        }
-        .sw-circle {
-          border-radius: 50%;
-        }
-        .sw-water {
-          border-radius: 5px;
-          background: rgba(44, 197, 228, 0.25);
+        .pal-item.on .pico {
+          color: var(--water);
+          background: var(--water-wash);
           border-color: var(--water);
         }
 
@@ -927,6 +949,50 @@ export default function MapEditor({ poolId, objects, setObjects, onSave, saveSta
         }
         .row :global(.btn) {
           flex: 1;
+        }
+        .shapes {
+          display: grid;
+          grid-template-columns: repeat(5, 1fr);
+          gap: 6px;
+        }
+        .shp {
+          aspect-ratio: 1;
+          background: rgba(232, 239, 242, 0.1);
+          border: 1.5px solid var(--line-strong);
+          cursor: pointer;
+          padding: 0;
+        }
+        .shp:hover {
+          border-color: var(--ink-3);
+        }
+        .shp.on {
+          background: var(--water-wash);
+          border-color: var(--water);
+        }
+        .sp-rect {
+          border-radius: 2px;
+        }
+        .sp-rounded {
+          border-radius: 7px;
+        }
+        .sp-pill {
+          border-radius: 999px;
+        }
+        .sp-circle,
+        .sp-oval {
+          border-radius: 50%;
+        }
+        .sp-water {
+          border-radius: 44% 56% 48% 52% / 54% 46% 54% 46%;
+        }
+        .sp-hex {
+          clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+        }
+        .sp-octa {
+          clip-path: polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%);
+        }
+        .sp-diamond {
+          clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
         }
         .toggle {
           display: flex;

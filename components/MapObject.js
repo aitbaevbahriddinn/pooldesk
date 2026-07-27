@@ -1,6 +1,7 @@
 'use client'
 
-import { objectName, typeOf } from '../lib/objectTypes'
+import TypeIcon from './TypeIcon'
+import { objectName, shapeOf, typeOf } from '../lib/objectTypes'
 
 // Один объект на карте. Используется и в редакторе, и в рабочем режиме.
 // status: null (нейтрально) | 'free' | 'booked' | 'busy' | 'off'
@@ -15,19 +16,26 @@ export default function MapObject({
   onDoubleClick,
 }) {
   const t = typeOf(obj.type)
+  const shape = shapeOf(obj)
   const name = objectName(obj)
-  const isZone = t.group === 'zone'
+
+  const shortest = Math.min(obj.width, obj.height)
+  const onScreen = shortest * zoom
+  const showIcon = onScreen > 52
+  const showText = onScreen > 26
 
   const fontSize = Math.max(
-    8,
-    Math.min(15, Math.min(obj.width, obj.height) / (name.length > 12 ? 6.5 : 4.6))
+    9,
+    Math.min(16, shortest / (name.length > 13 ? 6.2 : 4.4))
   )
+  const iconSize = Math.max(12, Math.min(30, shortest * 0.24))
+  const border = 1.6 / zoom
 
   return (
     <div
       className={[
         'mo',
-        `shape-${t.shape}`,
+        `sh-${shape}`,
         `grp-${t.group}`,
         status ? `st-${status}` : 'st-none',
         selected ? 'sel' : '',
@@ -41,18 +49,29 @@ export default function MapObject({
         height: obj.height,
         transform: obj.rotation ? `rotate(${obj.rotation}deg)` : undefined,
         '--ring': ringColor || 'transparent',
-        '--sw': `${1.5 / zoom}px`,
+        '--bw': `${border}px`,
       }}
       onPointerDown={onPointerDown}
       onDoubleClick={onDoubleClick}
       data-id={obj.id}
     >
-      {ringColor && <span className="ring" aria-hidden="true" />}
+      <span className={`face sh-${shape}`} aria-hidden="true" />
+      {ringColor && <span className={`ring sh-${shape}`} aria-hidden="true" />}
+
       <span
         className="cap"
-        style={{ fontSize, transform: obj.rotation ? `rotate(${-obj.rotation}deg)` : undefined }}
+        style={{ transform: obj.rotation ? `rotate(${-obj.rotation}deg)` : undefined }}
       >
-        {name}
+        {showIcon && (
+          <span className="ic">
+            <TypeIcon name={t.icon} size={iconSize} stroke={1.6} />
+          </span>
+        )}
+        {showText && (
+          <span className="txt" style={{ fontSize }}>
+            {name}
+          </span>
+        )}
       </span>
 
       <style jsx>{`
@@ -63,54 +82,105 @@ export default function MapObject({
           user-select: none;
           touch-action: none;
           box-sizing: border-box;
-          border: calc(var(--sw) * 1.15) solid var(--edge, #b6c2c7);
-          background: var(--fill, #fff);
-          color: var(--label, #0d1b21);
+          background: var(--edge, #b0c0c6);
+          color: var(--label, #0c1b22);
           transition: filter 0.12s;
         }
-        .shape-rounded {
-          border-radius: 10px;
-        }
-        .shape-circle {
-          border-radius: 50%;
-        }
-        .shape-rect {
-          border-radius: 3px;
-        }
-        .shape-water {
-          border-radius: 22px;
+        .face {
+          position: absolute;
+          inset: var(--bw);
+          background: var(--fill, #fff);
+          background-image: linear-gradient(
+            168deg,
+            rgba(255, 255, 255, 0.55) 0%,
+            rgba(255, 255, 255, 0) 55%
+          );
+          pointer-events: none;
         }
         .cap {
-          font-weight: 600;
-          line-height: 1.15;
-          text-align: center;
-          padding: 2px 3px;
+          position: relative;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 3%;
+          width: 92%;
           pointer-events: none;
           overflow: hidden;
         }
+        .ic {
+          display: block;
+          opacity: 0.62;
+          line-height: 0;
+        }
+        .txt {
+          font-weight: 650;
+          line-height: 1.14;
+          text-align: center;
+          letter-spacing: -0.01em;
+        }
+
+        /* ── Формы ───────────────────────────────── */
+        .sh-rect {
+          border-radius: 4px;
+        }
+        .sh-rounded {
+          border-radius: 14px;
+        }
+        .sh-pill {
+          border-radius: 999px;
+        }
+        .sh-circle,
+        .sh-oval {
+          border-radius: 50%;
+        }
+        .sh-water {
+          border-radius: 44% 56% 48% 52% / 54% 46% 54% 46%;
+        }
+        .sh-hex {
+          clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+        }
+        .sh-octa {
+          clip-path: polygon(
+            30% 0%,
+            70% 0%,
+            100% 30%,
+            100% 70%,
+            70% 100%,
+            30% 100%,
+            0% 70%,
+            0% 30%
+          );
+        }
+        .sh-diamond {
+          clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+        }
+
         /* ── Инфраструктура: приглушённая, не спорит со статусами ── */
         .grp-zone {
           --fill: #e9eff2;
-          --edge: #c6d3d8;
-          --label: #627a84;
-        }
-        .shape-water {
-          --fill: #cfe9f2;
-          --edge: #8fc6d9;
-          --label: #0a6a83;
+          --edge: #c2d0d6;
+          --label: #5d757f;
         }
         .grp-service {
-          --fill: #e6ebed;
-          --edge: #c6d1d5;
-          --label: #627a84;
+          --fill: #e7ecee;
+          --edge: #c4d0d4;
+          --label: #5d757f;
         }
         .grp-decor {
           --fill: #f1f5f6;
-          --edge: #d0dade;
-          --label: #8299a3;
+          --edge: #ccd8dc;
+          --label: #7e959f;
         }
-        /* ── Статусы. Каждый отличается и цветом, и заливкой,
-             чтобы их нельзя было спутать даже боковым зрением. ── */
+        .sh-water.grp-zone,
+        .grp-zone.sh-water {
+          --fill: #cfe9f2;
+          --edge: #86c2d7;
+          --label: #0a6a83;
+        }
+
+        /* ── Статусы. Отличаются и цветом, и заливкой,
+             чтобы их нельзя было спутать боковым зрением. ── */
         .st-free {
           --fill: #ecfdf3;
           --edge: #10b981;
@@ -120,9 +190,11 @@ export default function MapObject({
           --fill: #fef7db;
           --edge: #eab308;
           --label: #6b4708;
+        }
+        .st-booked .face {
           background-image: repeating-linear-gradient(
             -45deg,
-            rgba(202, 138, 4, 0.28) 0 5px,
+            rgba(202, 138, 4, 0.3) 0 5px,
             transparent 5px 12px
           );
         }
@@ -131,32 +203,54 @@ export default function MapObject({
           --edge: #9f1239;
           --label: #ffffff;
         }
+        .st-busy .face {
+          background-image: linear-gradient(
+            168deg,
+            rgba(255, 255, 255, 0.22) 0%,
+            rgba(255, 255, 255, 0) 60%
+          );
+        }
+        .st-busy .ic {
+          opacity: 0.85;
+        }
         .st-off {
           --fill: #e2e8f0;
           --edge: #94a3b8;
-          --label: #64748b;
+          --label: #607484;
         }
-        .st-off .cap {
+        .st-off .txt {
           text-decoration: line-through;
         }
-        /* ── Рамка компании: отдельное кольцо снаружи фигуры ── */
+
+        /* ── Рамка компании: кольцо снаружи фигуры ── */
         .ring {
           position: absolute;
-          inset: calc(var(--sw) * -3.2);
-          border: calc(var(--sw) * 2.6) solid var(--ring);
-          border-radius: inherit;
+          inset: calc(var(--bw) * -3.4);
+          border: calc(var(--bw) * 2.4) solid var(--ring);
           pointer-events: none;
-          box-shadow: 0 0 0 calc(var(--sw) * 0.8) rgba(255, 255, 255, 0.75);
+          box-shadow: 0 0 0 calc(var(--bw) * 0.9) rgba(255, 255, 255, 0.8);
         }
-        .shape-circle .ring {
-          border-radius: 50%;
+        .ring.sh-hex,
+        .ring.sh-octa,
+        .ring.sh-diamond {
+          border: none;
+          background: var(--ring);
+          box-shadow: none;
+          z-index: -1;
         }
+
         .sel {
-          outline: calc(var(--sw) * 1.5) solid var(--water);
-          outline-offset: calc(var(--sw) * 1.5);
+          outline: calc(var(--bw) * 2) solid var(--water, #0d87a6);
+          outline-offset: calc(var(--bw) * 2);
+        }
+        .sh-hex.sel,
+        .sh-octa.sel,
+        .sh-diamond.sel {
+          outline: none;
+          filter: drop-shadow(0 0 calc(var(--bw) * 3) #0d87a6);
         }
         .dim {
-          filter: saturate(0.25) opacity(0.45);
+          filter: saturate(0.2) opacity(0.4);
         }
         .locked {
           cursor: not-allowed;

@@ -9,7 +9,7 @@ import { createClient } from '../../../lib/supabaseClient'
 
 
 const COLUMNS =
-  'id, pool_id, type, number, label, seats, x, y, width, height, rotation, is_bookable, is_available, locked, note'
+  'id, pool_id, type, number, label, shape, seats, x, y, width, height, rotation, is_bookable, is_available, locked, note'
 
 export default function PoolPage({ params }) {
   const poolId = params.id
@@ -244,6 +244,7 @@ function normalize(o) {
     type: o.type,
     number: o.number,
     label: o.label ?? null,
+    shape: o.shape ?? null,
     seats: o.seats ?? null,
     x: Number(o.x),
     y: Number(o.y),
@@ -264,6 +265,7 @@ function serialize(o) {
     type: o.type,
     number: o.number,
     label: o.label,
+    shape: o.shape,
     seats: o.seats,
     x: Math.round(o.x),
     y: Math.round(o.y),

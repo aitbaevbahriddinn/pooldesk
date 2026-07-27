@@ -134,8 +134,12 @@ export default function DashboardPage() {
           <div className="grid">
             {pools.map((p) => (
               <button key={p.id} className="card pool" onClick={() => router.push(`/pool/${p.id}`)}>
+                <span className="thumb" aria-hidden="true">
+                  <i className="w1" />
+                  <i className="w2" />
+                </span>
                 <span className="pool-name">{p.name}</span>
-                <span className="tiny muted">Открыть карту →</span>
+                <span className="tiny muted go">Открыть карту →</span>
               </button>
             ))}
           </div>
@@ -196,7 +200,8 @@ export default function DashboardPage() {
           min-height: 100vh;
         }
         .top {
-          padding: 30px 24px 26px;
+          padding: 34px 24px 30px;
+          background: linear-gradient(150deg, #12313d 0%, #0c1b22 60%) !important;
         }
         .top-inner {
           max-width: 940px;
@@ -228,24 +233,52 @@ export default function DashboardPage() {
         .pool {
           display: flex;
           flex-direction: column;
-          align-items: flex-start;
-          gap: 10px;
-          padding: 18px;
+          align-items: stretch;
+          gap: 0;
+          padding: 0;
+          overflow: hidden;
           text-align: left;
           font: inherit;
           cursor: pointer;
-          transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+          transition: border-color 0.18s, box-shadow 0.18s, transform 0.18s;
         }
         .pool:hover {
           border-color: var(--water);
           box-shadow: var(--shadow-2);
-          transform: translateY(-1px);
+          transform: translateY(-2px);
+        }
+        .thumb {
+          position: relative;
+          display: block;
+          height: 88px;
+          overflow: hidden;
+          background: linear-gradient(160deg, #0d87a6 0%, #0a4a5e 100%);
+        }
+        .thumb i {
+          position: absolute;
+          left: -20%;
+          width: 140%;
+          height: 60px;
+          border-radius: 45%;
+          background: rgba(255, 255, 255, 0.12);
+        }
+        .w1 {
+          bottom: -26px;
+        }
+        .w2 {
+          bottom: -40px;
+          background: rgba(255, 255, 255, 0.09) !important;
+          transform: rotate(-3deg);
         }
         .pool-name {
           font-family: var(--font-display), sans-serif;
           font-weight: 700;
-          font-size: 16px;
+          font-size: 17px;
           color: var(--ink);
+          padding: 14px 16px 0;
+        }
+        .go {
+          padding: 6px 16px 16px;
         }
         .empty {
           padding: 30px;
