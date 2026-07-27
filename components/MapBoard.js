@@ -5,6 +5,13 @@ import MapObject from './MapObject'
 import VisitDialog from './VisitDialog'
 import { createClient } from '../lib/supabaseClient'
 import { objectName, typeOf } from '../lib/objectTypes'
+import { plural } from '../lib/format'
+import IconButton from './ui/IconButton'
+import Button from './ui/Button'
+import StatusChip from './ui/StatusChip'
+import EmptyState from './ui/EmptyState'
+import Toast from './ui/Toast'
+import Icon from './ui/Icon'
 
 const VISIT_COLORS = [
   '#2563eb',
@@ -33,10 +40,12 @@ export default function MapBoard({ poolId, objects, onEdit }) {
   const [error, setError] = useState('')
   const [, tick] = useState(0)
   const [view, setView] = useState({ x: 40, y: 40, zoom: 0.6 })
+  const [sidePanelOpen, setSidePanelOpen] = useState(false)
 
   const viewportRef = useRef(null)
   const pan = useRef(null)
   const fitted = useRef(false)
+  const touchPoints = useRef(new Map())
 
   /* Живые таймеры удержания */
   useEffect(() => {
@@ -62,6 +71,12 @@ export default function MapBoard({ poolId, objects, onEdit }) {
     setActiveId(null)
     load()
   }, [load])
+
+  /* На узких экранах открываем панель визита при выборе брони на карте
+     (сама панель на десктопе видна всегда — это касается только мобильной раскладки) */
+  useEffect(() => {
+    if (activeId) setSidePanelOpen(true)
+  }, [activeId])
 
   /* Вписать карту в экран при первом показе */
   useEffect(() => {
@@ -130,7 +145,42 @@ export default function MapBoard({ poolId, objects, onEdit }) {
     setSelection((s) => (s.includes(o.id) ? s.filter((i) => i !== o.id) : [...s, o.id]))
   }
 
+  // Стабильная ссылка на обработчик — иначе React.memo(MapObject) не
+  // помогает, т.к. инлайн `(e) => clickObject(e, o)` менял бы идентичность
+  // пропа onPointerDown на каждый рендер. Сама логика clickObject не меняется.
+  const clickObjectRef = useRef(clickObject)
+  clickObjectRef.current = clickObject
+  const handleObjectPointerDown = useCallback((e) => {
+    const id = e.currentTarget.getAttribute('data-id')
+    const obj = objectById.get(id)
+    if (obj) clickObjectRef.current(e, obj)
+  }, [objectById])
+
+  // Пинч-зум для тач-устройств — добавлено поверх мышиной панорамы ниже,
+  // не изменяя её: одним пальцем по пустому месту по-прежнему работает
+  // обычная панорама (условие `e.target.closest('.mo')` то же самое).
   function startPan(e) {
+    if (e.pointerType === 'touch') {
+      touchPoints.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      if (touchPoints.current.size === 2) {
+        const r = viewportRef.current.getBoundingClientRect()
+        const pts = [...touchPoints.current.values()]
+        const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) || 1
+        pan.current = {
+          kind: 'pinch',
+          startDist: dist,
+          startZoom: view.zoom,
+          startMid: { x: (pts[0].x + pts[1].x) / 2 - r.left, y: (pts[0].y + pts[1].y) / 2 - r.top },
+          startView: { x: view.x, y: view.y },
+        }
+        setSelection([])
+        setActiveId(null)
+        try {
+          viewportRef.current.setPointerCapture(e.pointerId)
+        } catch {}
+        return
+      }
+    }
     if (e.target.closest('.mo')) return
     setSelection([])
     setActiveId(null)
@@ -139,12 +189,34 @@ export default function MapBoard({ poolId, objects, onEdit }) {
   }
 
   function movePan(e) {
+    if (e.pointerType === 'touch' && touchPoints.current.has(e.pointerId)) {
+      touchPoints.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+    }
     if (!pan.current) return
+
+    if (pan.current.kind === 'pinch') {
+      const pts = [...touchPoints.current.values()]
+      if (pts.length < 2) return
+      const g = pan.current
+      const r = viewportRef.current.getBoundingClientRect()
+      const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) || 1
+      const mid = { x: (pts[0].x + pts[1].x) / 2 - r.left, y: (pts[0].y + pts[1].y) / 2 - r.top }
+      const zoom = clamp(g.startZoom * (dist / g.startDist), 0.15, 2.5)
+      const k = zoom / g.startZoom
+      setView({
+        zoom,
+        x: g.startMid.x - (g.startMid.x - g.startView.x) * k + (mid.x - g.startMid.x),
+        y: g.startMid.y - (g.startMid.y - g.startView.y) * k + (mid.y - g.startMid.y),
+      })
+      return
+    }
+
     const p = pan.current
     setView((v) => ({ ...v, x: p.ox + (e.clientX - p.sx), y: p.oy + (e.clientY - p.sy) }))
   }
 
   function endPan(e) {
+    touchPoints.current.delete(e.pointerId)
     pan.current = null
     try {
       viewportRef.current.releasePointerCapture(e.pointerId)
@@ -246,23 +318,19 @@ export default function MapBoard({ poolId, objects, onEdit }) {
       {/* ── Шапка дня ── */}
       <div className="daybar chrome">
         <div className="dates">
-          <button className="btn btn-quiet" onClick={() => setDate(shift(date, -1))} aria-label="Предыдущий день">
-            ‹
-          </button>
+          <IconButton icon="chevronLeft" label="Предыдущий день" onClick={() => setDate(shift(date, -1))} />
           <input
             className="dateinput"
             type="date"
             value={date}
             onChange={(e) => e.target.value && setDate(e.target.value)}
           />
-          <button className="btn btn-quiet" onClick={() => setDate(shift(date, 1))} aria-label="Следующий день">
-            ›
-          </button>
+          <IconButton icon="chevronRight" label="Следующий день" onClick={() => setDate(shift(date, 1))} />
           <span className="human">{humanDate(date)}</span>
           {date !== todayStr() && (
-            <button className="btn btn-ghost sm" onClick={() => setDate(todayStr())}>
+            <Button variant="ghost" size="sm" onClick={() => setDate(todayStr())}>
               Сегодня
-            </button>
+            </Button>
           )}
         </div>
 
@@ -294,39 +362,54 @@ export default function MapBoard({ poolId, objects, onEdit }) {
                   ringColor={v?.color || null}
                   selected={selection.includes(o.id)}
                   dimmed={!!activeVisit && v?.id !== activeVisit.id && typeOf(o.type).bookable}
-                  onPointerDown={(e) => clickObject(e, o)}
+                  onPointerDown={handleObjectPointerDown}
                 />
               )
             })}
           </div>
 
           <div className="zoombar chrome">
-            <button className="btn btn-quiet" onClick={() => setView((v) => ({ ...v, zoom: clamp(v.zoom * 0.85, 0.15, 2.5) }))}>
-              −
-            </button>
-            <span className="tiny muted">{Math.round(view.zoom * 100)}%</span>
-            <button className="btn btn-quiet" onClick={() => setView((v) => ({ ...v, zoom: clamp(v.zoom * 1.18, 0.15, 2.5) }))}>
-              +
-            </button>
+            <IconButton
+              icon="minus"
+              size={15}
+              label="Уменьшить масштаб"
+              onClick={() => setView((v) => ({ ...v, zoom: clamp(v.zoom * 0.85, 0.15, 2.5) }))}
+            />
+            <span className="tiny muted zoom-value">{Math.round(view.zoom * 100)}%</span>
+            <IconButton
+              icon="plus"
+              size={15}
+              label="Увеличить масштаб"
+              onClick={() => setView((v) => ({ ...v, zoom: clamp(v.zoom * 1.18, 0.15, 2.5) }))}
+            />
           </div>
 
           {!objects.length && (
             <div className="nomap">
-              <div className="card box">
-                <h3 style={{ marginBottom: 6 }}>Карта ещё не нарисована</h3>
-                <p className="muted tiny" style={{ marginBottom: 18 }}>
-                  Расставьте лежаки и столы в редакторе — после этого здесь появится план смены.
-                </p>
-                <button className="btn btn-primary" onClick={onEdit}>
-                  Открыть редактор
-                </button>
-              </div>
+              <EmptyState
+                className="box"
+                title="Карта ещё не нарисована"
+                description="Расставьте лежаки и столы в редакторе — после этого здесь появится план смены."
+                action={
+                  <Button variant="primary" onClick={onEdit}>
+                    Открыть редактор
+                  </Button>
+                }
+              />
             </div>
           )}
         </div>
 
-        {/* ── Панель справа ── */}
-        <aside className="side chrome">
+        {/* ── Панель справа (на мобильных — выдвижная снизу) ── */}
+        {sidePanelOpen && <div className="mobile-backdrop" onClick={() => setSidePanelOpen(false)} />}
+        <IconButton
+          icon="panel"
+          label={sidePanelOpen ? 'Скрыть панель визитов' : 'Показать панель визитов'}
+          className="side-toggle"
+          onClick={() => setSidePanelOpen((v) => !v)}
+        />
+        <aside className={`side chrome mobile-drawer ${sidePanelOpen ? 'mobile-open' : ''}`}>
+          <div className="drawer-handle mobile-only" />
           {activeVisit ? (
             <VisitPanel
               visit={activeVisit}
@@ -360,21 +443,21 @@ export default function MapBoard({ poolId, objects, onEdit }) {
             <span className="tiny muted names">{selectedNames.join(' · ')}</span>
           </div>
           <div className="acts">
-            <button className="btn btn-quiet" onClick={() => setSelection([])}>
+            <Button variant="quiet" onClick={() => setSelection([])}>
               Сбросить
-            </button>
+            </Button>
             {activeVisit ? (
-              <button className="btn btn-primary" onClick={addSeats}>
+              <Button variant="primary" onClick={addSeats}>
                 Добавить к брони
-              </button>
+              </Button>
             ) : (
               <>
-                <button className="btn btn-ghost" onClick={() => setDialog({ mode: 'book' })}>
+                <Button variant="ghost" onClick={() => setDialog({ mode: 'book' })}>
                   Забронировать
-                </button>
-                <button className="btn btn-primary" onClick={() => setDialog({ mode: 'seat' })}>
+                </Button>
+                <Button variant="primary" onClick={() => setDialog({ mode: 'seat' })}>
                   Посадить сейчас
-                </button>
+                </Button>
               </>
             )}
           </div>
@@ -382,12 +465,9 @@ export default function MapBoard({ poolId, objects, onEdit }) {
       )}
 
       {error && (
-        <div className="toast">
+        <Toast variant="error" onClose={() => setError('')}>
           {error}
-          <button onClick={() => setError('')} aria-label="Закрыть">
-            ✕
-          </button>
-        </div>
+        </Toast>
       )}
 
       {dialog && (
@@ -448,10 +528,6 @@ export default function MapBoard({ poolId, objects, onEdit }) {
           color: var(--ink-2);
           margin-left: 4px;
         }
-        :global(.btn.sm) {
-          padding: 5px 10px;
-          font-size: 12px;
-        }
         .main {
           flex: 1;
           min-height: 0;
@@ -489,6 +565,10 @@ export default function MapBoard({ poolId, objects, onEdit }) {
           border-radius: var(--r-md);
           box-shadow: var(--shadow-1);
         }
+        .zoombar .zoom-value {
+          min-width: 34px;
+          text-align: center;
+        }
         .nomap {
           position: absolute;
           inset: 0;
@@ -496,10 +576,8 @@ export default function MapBoard({ poolId, objects, onEdit }) {
           place-items: center;
           padding: 24px;
         }
-        .box {
-          padding: 30px;
+        .nomap :global(.box) {
           max-width: 400px;
-          text-align: center;
         }
         .side {
           border-left: 1px solid #0a1920;
@@ -539,40 +617,60 @@ export default function MapBoard({ poolId, objects, onEdit }) {
           display: flex;
           gap: 6px;
         }
-        .toast {
-          position: absolute;
-          left: 50%;
-          top: 14px;
-          transform: translateX(-50%);
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          padding: 10px 12px 10px 16px;
-          background: #fdeaea;
-          color: #971b1b;
-          border: 1px solid #f3c9c9;
-          border-radius: var(--r-md);
-          box-shadow: var(--shadow-2);
-          font-size: 13px;
-          z-index: 30;
-          max-width: 560px;
+        .side-toggle {
+          display: none;
         }
-        .toast button {
-          background: none;
-          border: none;
-          color: inherit;
-          cursor: pointer;
-          font-size: 14px;
+        .mobile-backdrop {
+          display: none;
         }
-        @media (max-width: 980px) {
+        .drawer-handle.mobile-only {
+          display: none;
+        }
+        @media (max-width: 1024px) {
           .main {
             grid-template-columns: 1fr;
           }
-          .side {
-            display: none;
-          }
           .actionbar {
             max-width: calc(100% - 24px);
+            bottom: 76px;
+          }
+          .zoombar {
+            top: 12px;
+            bottom: auto;
+          }
+          .side-toggle {
+            display: grid;
+            position: fixed;
+            right: 12px;
+            bottom: 12px;
+            z-index: 42;
+            box-shadow: var(--shadow-2);
+          }
+          .mobile-backdrop {
+            display: block;
+            position: fixed;
+            inset: 0;
+            background: rgba(13, 27, 33, 0.32);
+            z-index: 40;
+          }
+          .side {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            max-height: 75vh;
+            border-left: none;
+            border-radius: var(--r-lg) var(--r-lg) 0 0;
+            box-shadow: var(--shadow-3);
+            transform: translateY(100%);
+            transition: transform var(--dur-base) var(--ease);
+            z-index: 41;
+          }
+          .side.mobile-open {
+            transform: translateY(0);
+          }
+          .drawer-handle.mobile-only {
+            display: block;
           }
         }
       `}</style>
@@ -731,7 +829,7 @@ function Row({ v, date, objectById, onOpen, faded }) {
       <span className="body">
         <span className="line1">
           <b>{v.guest_name || 'Без имени'}</b>
-          <span className={`chip ${v.status}`}>{STATUS_LABEL[v.status]}</span>
+          <StatusChip status={v.status} />
         </span>
         <span className="line2 tiny muted">
           {v.arrival_time ? v.arrival_time.slice(0, 5) + ' · ' : ''}
@@ -789,30 +887,6 @@ function Row({ v, date, objectById, onOpen, faded }) {
           color: #f5cf4a;
           font-weight: 600;
         }
-        .chip {
-          font-size: 11px;
-          font-weight: 600;
-          padding: 2px 7px;
-          border-radius: 999px;
-          white-space: nowrap;
-        }
-        .chip.booked {
-          background: rgba(234, 179, 8, 0.2);
-          color: #f5cf4a;
-        }
-        .chip.arrived {
-          background: rgba(225, 29, 72, 0.22);
-          color: #ff8098;
-        }
-        .chip.completed {
-          background: rgba(16, 185, 129, 0.18);
-          color: #4fd8a6;
-        }
-        .chip.cancelled,
-        .chip.no_show {
-          background: rgba(148, 163, 184, 0.18);
-          color: #a3b6c0;
-        }
       `}</style>
     </button>
   )
@@ -825,15 +899,17 @@ function VisitPanel({ visit, objectById, date, onBack, onStatus, onEdit, onRemov
 
   return (
     <div className="panel">
-      <button className="btn btn-quiet back" onClick={onBack}>
-        ← Все визиты
-      </button>
+      <Button variant="quiet" size="sm" className="back" onClick={onBack}>
+        <Icon name="arrowLeft" size={15} /> Все визиты
+      </Button>
 
       <div className="head">
         <span className="dot" style={{ background: visit.color }} />
         <div>
           <h3>{visit.guest_name || 'Без имени'}</h3>
-          <span className={`chip ${visit.status}`}>{STATUS_LABEL[visit.status]}</span>
+          <div style={{ marginTop: 5 }}>
+            <StatusChip status={visit.status} />
+          </div>
         </div>
       </div>
 
@@ -874,9 +950,13 @@ function VisitPanel({ visit, objectById, date, onBack, onStatus, onEdit, onRemov
           {rows.map((vo) => (
             <li key={vo.id}>
               {objectName(objectById.get(vo.object_id) || {})}
-              <button onClick={() => onRemoveSeat(vo.id)} title="Убрать место">
-                ✕
-              </button>
+              <IconButton
+                icon="close"
+                size={13}
+                label={`Убрать место: ${objectName(objectById.get(vo.object_id) || {})}`}
+                className="seat-remove"
+                onClick={() => onRemoveSeat(vo.id)}
+              />
             </li>
           ))}
           {!rows.length && <li className="muted tiny">Мест нет</li>}
@@ -889,26 +969,26 @@ function VisitPanel({ visit, objectById, date, onBack, onStatus, onEdit, onRemov
       <div className="ops">
         {visit.status === 'booked' && (
           <>
-            <button className="btn btn-primary btn-block" onClick={() => onStatus(visit, 'arrived')}>
+            <Button variant="primary" block onClick={() => onStatus(visit, 'arrived')}>
               Гости пришли
-            </button>
-            <button className="btn btn-ghost btn-block" onClick={() => onStatus(visit, 'no_show')}>
+            </Button>
+            <Button variant="ghost" block onClick={() => onStatus(visit, 'no_show')}>
               Не пришли
-            </button>
+            </Button>
           </>
         )}
         {visit.status === 'arrived' && (
-          <button className="btn btn-primary btn-block" onClick={() => onStatus(visit, 'completed')}>
+          <Button variant="primary" block onClick={() => onStatus(visit, 'completed')}>
             Освободить места
-          </button>
+          </Button>
         )}
-        <button className="btn btn-ghost btn-block" onClick={onEdit}>
+        <Button variant="ghost" block onClick={onEdit}>
           Изменить данные
-        </button>
+        </Button>
         {['booked', 'arrived'].includes(visit.status) && (
-          <button className="btn btn-quiet btn-block danger" onClick={() => onStatus(visit, 'cancelled')}>
+          <Button variant="danger" block onClick={() => onStatus(visit, 'cancelled')}>
             Отменить бронь
-          </button>
+          </Button>
         )}
       </div>
 
@@ -931,31 +1011,6 @@ function VisitPanel({ visit, objectById, date, onBack, onStatus, onEdit, onRemov
           border-radius: 3px;
           margin-top: 6px;
           flex: none;
-        }
-        .chip {
-          display: inline-block;
-          margin-top: 5px;
-          font-size: 11px;
-          font-weight: 600;
-          padding: 2px 8px;
-          border-radius: 999px;
-        }
-        .chip.booked {
-          background: rgba(234, 179, 8, 0.2);
-          color: #f5cf4a;
-        }
-        .chip.arrived {
-          background: rgba(225, 29, 72, 0.22);
-          color: #ff8098;
-        }
-        .chip.completed {
-          background: rgba(16, 185, 129, 0.18);
-          color: #4fd8a6;
-        }
-        .chip.cancelled,
-        .chip.no_show {
-          background: rgba(148, 163, 184, 0.18);
-          color: #a3b6c0;
         }
         .meta {
           margin: 0;
@@ -996,15 +1051,14 @@ function VisitPanel({ visit, objectById, date, onBack, onStatus, onEdit, onRemov
         .seats li:last-child {
           border: none;
         }
-        .seats li button {
-          background: none;
-          border: none;
+        .seats li :global(.seat-remove) {
+          width: 22px;
+          height: 22px;
           color: var(--ink-3);
-          cursor: pointer;
-          padding: 2px 4px;
         }
-        .seats li button:hover {
+        .seats li :global(.seat-remove:hover) {
           color: var(--busy);
+          background: transparent;
         }
         .hint {
           margin-top: 10px;
@@ -1014,22 +1068,12 @@ function VisitPanel({ visit, objectById, date, onBack, onStatus, onEdit, onRemov
           gap: 7px;
           padding: 14px;
         }
-        :global(.btn-quiet.danger) {
-          color: var(--busy);
-        }
       `}</style>
     </div>
   )
 }
 
 /* ── Утилиты ───────────────────────────────────────── */
-const STATUS_LABEL = {
-  booked: 'Забронировано',
-  arrived: 'Гости на месте',
-  completed: 'Завершён',
-  cancelled: 'Отменён',
-  no_show: 'Не пришли',
-}
 
 function todayStr() {
   const d = new Date()
@@ -1057,12 +1101,4 @@ function isOverdue(v, dateStr) {
   const d = new Date(`${dateStr}T00:00:00`)
   d.setHours(h, m + (v.hold_minutes || 30), 0, 0)
   return Date.now() > d.getTime()
-}
-
-function plural(n, one, few, many) {
-  const m10 = n % 10
-  const m100 = n % 100
-  if (m10 === 1 && m100 !== 11) return one
-  if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return few
-  return many
 }

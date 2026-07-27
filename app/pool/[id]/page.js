@@ -3,9 +3,23 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import MapEditor from '../../../components/MapEditor'
-import MapBoard from '../../../components/MapBoard'
+import dynamic from 'next/dynamic'
 import { createClient } from '../../../lib/supabaseClient'
+import Tabs from '../../../components/ui/Tabs'
+import Icon from '../../../components/ui/Icon'
+import LoadingScreen from '../../../components/ui/LoadingScreen'
+
+// Редактор и рабочий режим показываются по одному за раз (переключатель
+// «Карта/Редактор» ниже) — грузим каждый только при первом обращении,
+// а не оба сразу при заходе на страницу.
+const MapEditor = dynamic(() => import('../../../components/MapEditor'), {
+  ssr: false,
+  loading: () => <LoadingScreen label="Загрузка редактора…" />,
+})
+const MapBoard = dynamic(() => import('../../../components/MapBoard'), {
+  ssr: false,
+  loading: () => <LoadingScreen label="Загрузка карты…" />,
+})
 
 
 const COLUMNS =
@@ -104,18 +118,7 @@ export default function PoolPage({ params }) {
   useEffect(() => () => clearTimeout(timer.current), [])
 
   if (loading) {
-    return (
-      <div className="center">
-        <p className="muted">Загрузка карты…</p>
-        <style jsx>{`
-          .center {
-            min-height: 100vh;
-            display: grid;
-            place-items: center;
-          }
-        `}</style>
-      </div>
-    )
+    return <LoadingScreen label="Загрузка карты…" />
   }
 
   return (
@@ -123,20 +126,21 @@ export default function PoolPage({ params }) {
       <header className="bar chrome">
         <div className="left">
           <Link href="/" className="back">
-            ← Бассейны
+            <Icon name="arrowLeft" size={16} />
+            <span className="back-label">Бассейны</span>
           </Link>
           <span className="divider" />
           <h2>{pool?.name}</h2>
         </div>
 
-        <div className="tabs">
-          <button className={mode === 'board' ? 'on' : ''} onClick={() => setMode('board')}>
-            Карта
-          </button>
-          <button className={mode === 'editor' ? 'on' : ''} onClick={() => setMode('editor')}>
-            Редактор
-          </button>
-        </div>
+        <Tabs
+          items={[
+            { value: 'board', label: 'Карта' },
+            { value: 'editor', label: 'Редактор' },
+          ]}
+          value={mode}
+          onChange={setMode}
+        />
 
         <div className="right">
           {fatal && <span className="fatal tiny">{fatal}</span>}
@@ -181,11 +185,15 @@ export default function PoolPage({ params }) {
           flex: 1;
         }
         .back {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
           color: var(--ink-2);
           text-decoration: none;
           font-size: 13px;
           font-weight: 500;
           white-space: nowrap;
+          transition: color var(--dur-fast);
         }
         .back:hover {
           color: var(--water);
@@ -194,30 +202,7 @@ export default function PoolPage({ params }) {
           width: 1px;
           height: 20px;
           background: var(--line);
-        }
-        .tabs {
-          display: flex;
-          gap: 3px;
-          padding: 3px;
-          background: var(--surface-2);
-          border: 1px solid var(--line);
-          border-radius: var(--r-md);
-        }
-        .tabs button {
-          padding: 6px 18px;
-          font: inherit;
-          font-size: 13px;
-          font-weight: 600;
-          color: var(--ink-2);
-          background: transparent;
-          border: none;
-          border-radius: var(--r-sm);
-          cursor: pointer;
-        }
-        .tabs button.on {
-          background: var(--surface);
-          color: var(--ink);
-          box-shadow: var(--shadow-1);
+          flex: none;
         }
         .right {
           flex: 1;
@@ -231,6 +216,23 @@ export default function PoolPage({ params }) {
         .body {
           flex: 1;
           min-height: 0;
+        }
+        h2 {
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        @media (max-width: 480px) {
+          .bar {
+            gap: 10px;
+            padding: 0 10px;
+          }
+          .back-label {
+            display: none;
+          }
+          .divider {
+            display: none;
+          }
         }
       `}</style>
     </div>

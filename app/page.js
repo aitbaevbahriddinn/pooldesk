@@ -3,6 +3,11 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '../lib/supabaseClient'
+import Button from '../components/ui/Button'
+import IconButton from '../components/ui/IconButton'
+import EmptyState from '../components/ui/EmptyState'
+import LoadingScreen from '../components/ui/LoadingScreen'
+import Icon from '../components/ui/Icon'
 
 export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
@@ -83,18 +88,7 @@ export default function DashboardPage() {
   }
 
   if (loading) {
-    return (
-      <div className="center">
-        <p className="muted">Загрузка…</p>
-        <style jsx>{`
-          .center {
-            min-height: 100vh;
-            display: grid;
-            place-items: center;
-          }
-        `}</style>
-      </div>
-    )
+    return <LoadingScreen />
   }
 
   return (
@@ -106,12 +100,13 @@ export default function DashboardPage() {
             <h1>{org?.name}</h1>
           </div>
           <div className="who">
-            <span className="tiny muted">
+            <span className="tiny muted who-text">
               {profile.full_name} · {profile.role === 'owner' ? 'владелец' : 'администратор'}
             </span>
-            <button className="btn btn-quiet" onClick={logout}>
+            <Button variant="quiet" onClick={logout} className="who-logout-full">
               Выйти
-            </button>
+            </Button>
+            <IconButton icon="logOut" label="Выйти" onClick={logout} className="who-logout-icon" />
           </div>
         </div>
       </header>
@@ -124,12 +119,11 @@ export default function DashboardPage() {
         </div>
 
         {pools.length === 0 ? (
-          <div className="card empty">
-            <h3 style={{ marginBottom: 6 }}>Здесь пока пусто</h3>
-            <p className="muted tiny" style={{ marginBottom: 18 }}>
-              Добавьте первый бассейн — затем нарисуете его карту и начнёте принимать брони.
-            </p>
-          </div>
+          <EmptyState
+            className="empty"
+            title="Здесь пока пусто"
+            description="Добавьте первый бассейн — затем нарисуете его карту и начнёте принимать брони."
+          />
         ) : (
           <div className="grid">
             {pools.map((p) => (
@@ -152,9 +146,9 @@ export default function DashboardPage() {
             value={newPool}
             onChange={(e) => setNewPool(e.target.value)}
           />
-          <button className="btn btn-primary" disabled={adding || !newPool.trim()}>
-            {adding ? 'Добавляем…' : 'Добавить бассейн'}
-          </button>
+          <Button variant="primary" disabled={!newPool.trim()} loading={adding} loadingText="Добавляем…">
+            Добавить бассейн
+          </Button>
         </form>
 
         {error && (
@@ -182,9 +176,10 @@ export default function DashboardPage() {
             <span className="eyebrow">Код приглашения</span>
             <div className="invite-row">
               <span className="code">{org?.invite_code}</span>
-              <button className="btn btn-ghost" onClick={copyCode} type="button">
+              <Button variant="ghost" onClick={copyCode} type="button">
+                <Icon name={copied ? 'check' : 'copy'} size={15} />
                 {copied ? 'Скопировано' : 'Копировать'}
-              </button>
+              </Button>
             </div>
             <p className="tiny muted" style={{ marginTop: 8 }}>
               Передайте код администратору — он введёт его при регистрации и получит доступ
@@ -220,6 +215,9 @@ export default function DashboardPage() {
           display: flex;
           align-items: center;
           gap: 12px;
+        }
+        .who-logout-icon {
+          display: none;
         }
         .block {
           margin-bottom: 40px;
@@ -281,8 +279,6 @@ export default function DashboardPage() {
           padding: 6px 16px 16px;
         }
         .empty {
-          padding: 30px;
-          text-align: center;
           margin-bottom: 14px;
         }
         .add {
@@ -328,7 +324,7 @@ export default function DashboardPage() {
           gap: 10px;
           margin-top: 8px;
         }
-        @media (max-width: 720px) {
+        @media (max-width: 768px) {
           .add {
             flex-direction: column;
           }
@@ -341,6 +337,34 @@ export default function DashboardPage() {
           .members,
           .invite {
             grid-column: 1;
+          }
+        }
+        @media (max-width: 480px) {
+          .top {
+            padding: 24px 16px 22px;
+          }
+          .top-inner {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 12px;
+          }
+          .content {
+            padding: 24px 16px 60px;
+          }
+          .who {
+            width: 100%;
+            justify-content: space-between;
+          }
+          .who-text {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+          }
+          .who-logout-full {
+            display: none;
+          }
+          .who-logout-icon {
+            display: inline-flex;
           }
         }
       `}</style>

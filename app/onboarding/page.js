@@ -3,6 +3,9 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '../../lib/supabaseClient'
+import Button from '../../components/ui/Button'
+import Tabs from '../../components/ui/Tabs'
+import LoadingScreen from '../../components/ui/LoadingScreen'
 
 export default function OnboardingPage() {
   const [tab, setTab] = useState('create')
@@ -58,18 +61,7 @@ export default function OnboardingPage() {
   }
 
   if (checking) {
-    return (
-      <div className="wrap">
-        <p className="muted">Загрузка…</p>
-        <style jsx>{`
-          .wrap {
-            min-height: 100vh;
-            display: grid;
-            place-items: center;
-          }
-        `}</style>
-      </div>
-    )
+    return <LoadingScreen />
   }
 
   return (
@@ -82,30 +74,19 @@ export default function OnboardingPage() {
           управляющий — введите код, который он передал.
         </p>
 
-        <div className="tabs" role="tablist">
-          <button
-            role="tab"
-            aria-selected={tab === 'create'}
-            className={tab === 'create' ? 'on' : ''}
-            onClick={() => {
-              setTab('create')
-              setError('')
-            }}
-          >
-            Я владелец
-          </button>
-          <button
-            role="tab"
-            aria-selected={tab === 'join'}
-            className={tab === 'join' ? 'on' : ''}
-            onClick={() => {
-              setTab('join')
-              setError('')
-            }}
-          >
-            У меня есть код
-          </button>
-        </div>
+        <Tabs
+          block
+          className="tabs"
+          items={[
+            { value: 'create', label: 'Я владелец' },
+            { value: 'join', label: 'У меня есть код' },
+          ]}
+          value={tab}
+          onChange={(v) => {
+            setTab(v)
+            setError('')
+          }}
+        />
 
         <form onSubmit={submit}>
           <div className="field">
@@ -148,9 +129,9 @@ export default function OnboardingPage() {
 
           {error && <div className="notice notice-error">{error}</div>}
 
-          <button className="btn btn-primary btn-block" disabled={busy}>
-            {busy ? 'Подождите…' : tab === 'create' ? 'Создать организацию' : 'Присоединиться'}
-          </button>
+          <Button variant="primary" block loading={busy} loadingText="Подождите…">
+            {tab === 'create' ? 'Создать организацию' : 'Присоединиться'}
+          </Button>
         </form>
       </div>
 
@@ -166,31 +147,9 @@ export default function OnboardingPage() {
           max-width: 420px;
           padding: 30px;
         }
-        .tabs {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 4px;
-          padding: 4px;
-          background: var(--surface-2);
-          border: 1px solid var(--line);
-          border-radius: var(--r-md);
+        :global(.tabs) {
           margin-bottom: 20px;
-        }
-        .tabs button {
-          padding: 8px;
-          font: inherit;
-          font-weight: 600;
-          font-size: 13px;
-          color: var(--ink-2);
-          background: transparent;
-          border: none;
-          border-radius: var(--r-sm);
-          cursor: pointer;
-        }
-        .tabs button.on {
-          background: var(--surface);
-          color: var(--ink);
-          box-shadow: var(--shadow-1);
+          width: 100%;
         }
       `}</style>
     </div>
