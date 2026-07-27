@@ -1,34 +1,57 @@
 :root {
-  /* Поверхности — палитра бетонного настила у воды */
-  --deck: #eff2f3;
+  /* ── Светлая рабочая поверхность ────────────────── */
+  --deck: #e5ebee;
+  --paper: #fbfcfd;
   --surface: #ffffff;
-  --surface-2: #f7f9f9;
-  --line: #dce3e5;
-  --line-strong: #c3cfd3;
+  --surface-2: #f4f7f8;
+  --line: #dae2e6;
+  --line-strong: #bfcdd3;
 
-  /* Текст */
-  --ink: #0d1b21;
-  --ink-2: #566a72;
-  --ink-3: #8a9aa1;
+  --ink: #0c1b22;
+  --ink-2: #55707b;
+  --ink-3: #8299a3;
 
-  /* Единственный акцент — глубина воды. Насыщенность зарезервирована за статусами. */
-  --water: #0b6e8c;
-  --water-deep: #07566f;
-  --water-wash: #e6f1f5;
+  /* ── Акцент: подсвеченная вода ──────────────────── */
+  --water: #0d87a6;
+  --water-deep: #0a6a83;
+  --water-wash: #e3f4f8;
 
-  /* Статусы объектов — это язык продукта, больше нигде эти цвета не используются */
-  --free: #17a34a;
-  --booked: #d99407;
-  --busy: #dc2626;
+  /* ── Статусы: различаются и цветом, и заливкой ─── */
+  --free: #10b981;
+  --booked: #eab308;
+  --busy: #e11d48;
   --off: #94a3b8;
 
   --r-sm: 6px;
   --r-md: 9px;
   --r-lg: 14px;
 
-  --shadow-1: 0 1px 2px rgba(13, 27, 33, 0.06), 0 1px 3px rgba(13, 27, 33, 0.04);
-  --shadow-2: 0 4px 16px rgba(13, 27, 33, 0.08), 0 1px 3px rgba(13, 27, 33, 0.06);
-  --shadow-3: 0 12px 40px rgba(13, 27, 33, 0.14);
+  --shadow-1: 0 1px 2px rgba(12, 27, 34, 0.06), 0 1px 3px rgba(12, 27, 34, 0.04);
+  --shadow-2: 0 6px 20px rgba(12, 27, 34, 0.1), 0 1px 3px rgba(12, 27, 34, 0.06);
+  --shadow-3: 0 24px 60px rgba(6, 18, 24, 0.3);
+}
+
+/* ── Тёмная оправа: переопределяет те же токены, ───
+   поэтому вложенные элементы перекрашиваются целиком */
+.chrome {
+  --surface: #11242c;
+  --surface-2: #1a333d;
+  --line: #22414d;
+  --line-strong: #2e5464;
+
+  --ink: #e8eff2;
+  --ink-2: #97aeb8;
+  --ink-3: #6c8b98;
+
+  --water: #2cc5e4;
+  --water-deep: #4fd4ee;
+  --water-wash: rgba(44, 197, 228, 0.16);
+
+  --shadow-1: none;
+  --shadow-2: 0 8px 24px rgba(0, 0, 0, 0.35);
+
+  color: var(--ink);
+  background: var(--surface);
 }
 
 * {
@@ -56,38 +79,26 @@ h2,
 h3 {
   font-family: var(--font-display), system-ui, sans-serif;
   font-weight: 700;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.025em;
   margin: 0;
 }
 
-h1 {
-  font-size: 26px;
-}
-h2 {
-  font-size: 18px;
-}
-h3 {
-  font-size: 15px;
-}
+h1 { font-size: 30px; }
+h2 { font-size: 19px; }
+h3 { font-size: 15px; }
 
-p {
-  margin: 0;
-}
+p { margin: 0; }
 
-/* ── Метка-надзаголовок ─────────────────────────── */
 .eyebrow {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.09em;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.13em;
   text-transform: uppercase;
   color: var(--ink-3);
 }
 
-/* ── Поля ввода ─────────────────────────────────── */
-.field {
-  display: block;
-  margin-bottom: 14px;
-}
+/* ── Поля ───────────────────────────────────────── */
+.field { display: block; margin-bottom: 14px; }
 
 .field label {
   display: block;
@@ -108,9 +119,9 @@ p {
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 
-.input::placeholder {
-  color: var(--ink-3);
-}
+.chrome .input { background: #0b1a21; }
+
+.input::placeholder { color: var(--ink-3); }
 
 .input:focus {
   outline: none;
@@ -118,10 +129,7 @@ p {
   box-shadow: 0 0 0 3px var(--water-wash);
 }
 
-.input:disabled {
-  background: var(--surface-2);
-  color: var(--ink-3);
-}
+.input:disabled { background: var(--surface-2); color: var(--ink-3); }
 
 /* ── Кнопки ─────────────────────────────────────── */
 .btn {
@@ -135,53 +143,29 @@ p {
   border: 1px solid transparent;
   border-radius: var(--r-md);
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
-  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.1s;
 }
 
-.btn:focus-visible {
-  outline: 2px solid var(--water);
-  outline-offset: 2px;
-}
+.btn:active:not(:disabled) { transform: translateY(1px); }
+.btn:focus-visible { outline: 2px solid var(--water); outline-offset: 2px; }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
-.btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.btn-primary {
-  background: var(--water);
-  color: #fff;
-}
-.btn-primary:hover:not(:disabled) {
-  background: var(--water-deep);
-}
+.btn-primary { background: var(--water); color: #fff; }
+.chrome .btn-primary { color: #06222b; }
+.btn-primary:hover:not(:disabled) { background: var(--water-deep); }
 
 .btn-ghost {
   background: var(--surface);
   color: var(--ink);
   border-color: var(--line-strong);
 }
-.btn-ghost:hover:not(:disabled) {
-  background: var(--surface-2);
-  border-color: var(--ink-3);
-}
+.btn-ghost:hover:not(:disabled) { background: var(--surface-2); border-color: var(--ink-3); }
 
-.btn-quiet {
-  background: transparent;
-  color: var(--ink-2);
-  padding: 6px 10px;
-}
-.btn-quiet:hover:not(:disabled) {
-  background: var(--surface-2);
-  color: var(--ink);
-}
+.btn-quiet { background: transparent; color: var(--ink-2); padding: 6px 10px; }
+.btn-quiet:hover:not(:disabled) { background: var(--surface-2); color: var(--ink); }
 
-.btn-block {
-  width: 100%;
-}
+.btn-block { width: 100%; }
 
-/* ── Карточки ───────────────────────────────────── */
 .card {
   background: var(--surface);
   border: 1px solid var(--line);
@@ -189,53 +173,21 @@ p {
   box-shadow: var(--shadow-1);
 }
 
-/* ── Сообщения ──────────────────────────────────── */
-.notice {
-  padding: 10px 12px;
-  border-radius: var(--r-md);
-  font-size: 13px;
-  margin-bottom: 14px;
-}
+.notice { padding: 10px 12px; border-radius: var(--r-md); font-size: 13px; margin-bottom: 14px; }
+.notice-error { background: #fdeef1; color: #9f1239; border: 1px solid #f7cdd6; }
+.notice-ok { background: #ecfdf3; color: #05603a; border: 1px solid #bbf0d4; }
 
-.notice-error {
-  background: #fdf0f0;
-  color: #9b1c1c;
-  border: 1px solid #f6d5d5;
-}
-
-.notice-ok {
-  background: #edf7f0;
-  color: #17703c;
-  border: 1px solid #cfe8d8;
-}
-
-/* ── Код приглашения ────────────────────────────── */
 .code {
   font-family: var(--font-mono), monospace;
-  font-size: 15px;
-  letter-spacing: 0.14em;
+  font-size: 16px;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
 }
 
-/* ── Служебное ──────────────────────────────────── */
-.spread {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.muted {
-  color: var(--ink-2);
-}
-
-.tiny {
-  font-size: 12px;
-}
+.spread { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.muted { color: var(--ink-2); }
+.tiny { font-size: 12px; }
 
 @media (prefers-reduced-motion: reduce) {
-  * {
-    animation-duration: 0.01ms !important;
-    transition-duration: 0.01ms !important;
-  }
+  * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }

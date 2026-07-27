@@ -63,7 +63,7 @@ export default function MapObject({
           user-select: none;
           touch-action: none;
           box-sizing: border-box;
-          border: var(--sw) solid var(--edge, #b6c2c7);
+          border: calc(var(--sw) * 1.15) solid var(--edge, #b6c2c7);
           background: var(--fill, #fff);
           color: var(--label, #0d1b21);
           transition: filter 0.12s;
@@ -90,45 +90,51 @@ export default function MapObject({
         }
         /* ── Инфраструктура: приглушённая, не спорит со статусами ── */
         .grp-zone {
-          --fill: #eef3f5;
-          --edge: #cdd8dc;
-          --label: #6a7b83;
+          --fill: #e9eff2;
+          --edge: #c6d3d8;
+          --label: #627a84;
         }
         .shape-water {
-          --fill: #d7ecf3;
-          --edge: #a8cfdc;
-          --label: #0b6e8c;
+          --fill: #cfe9f2;
+          --edge: #8fc6d9;
+          --label: #0a6a83;
         }
         .grp-service {
-          --fill: #e9edee;
-          --edge: #ccd5d8;
-          --label: #6a7b83;
+          --fill: #e6ebed;
+          --edge: #c6d1d5;
+          --label: #627a84;
         }
         .grp-decor {
-          --fill: #f4f7f8;
-          --edge: #d3dcdf;
-          --label: #8a9aa1;
+          --fill: #f1f5f6;
+          --edge: #d0dade;
+          --label: #8299a3;
         }
-        /* ── Статусы: единственное место с насыщенным цветом ── */
+        /* ── Статусы. Каждый отличается и цветом, и заливкой,
+             чтобы их нельзя было спутать даже боковым зрением. ── */
         .st-free {
-          --fill: #e8f6ed;
-          --edge: #17a34a;
-          --label: #10682f;
+          --fill: #ecfdf3;
+          --edge: #10b981;
+          --label: #05603a;
         }
         .st-booked {
-          --fill: #fdf3dd;
-          --edge: #d99407;
-          --label: #8a5c02;
+          --fill: #fef7db;
+          --edge: #eab308;
+          --label: #6b4708;
+          background-image: repeating-linear-gradient(
+            -45deg,
+            rgba(202, 138, 4, 0.28) 0 5px,
+            transparent 5px 12px
+          );
         }
         .st-busy {
-          --fill: #fdeaea;
-          --edge: #dc2626;
-          --label: #971b1b;
+          --fill: #e11d48;
+          --edge: #9f1239;
+          --label: #ffffff;
         }
         .st-off {
-          --fill: #eef1f2;
+          --fill: #e2e8f0;
           --edge: #94a3b8;
-          --label: #7b8a93;
+          --label: #64748b;
         }
         .st-off .cap {
           text-decoration: line-through;
@@ -136,10 +142,11 @@ export default function MapObject({
         /* ── Рамка компании: отдельное кольцо снаружи фигуры ── */
         .ring {
           position: absolute;
-          inset: calc(var(--sw) * -2.6);
-          border: calc(var(--sw) * 2) solid var(--ring);
+          inset: calc(var(--sw) * -3.2);
+          border: calc(var(--sw) * 2.6) solid var(--ring);
           border-radius: inherit;
           pointer-events: none;
+          box-shadow: 0 0 0 calc(var(--sw) * 0.8) rgba(255, 255, 255, 0.75);
         }
         .shape-circle .ring {
           border-radius: 50%;

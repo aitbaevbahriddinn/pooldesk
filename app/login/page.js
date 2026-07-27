@@ -123,7 +123,7 @@ export default function LoginPage() {
         .auth-brand {
           position: relative;
           overflow: hidden;
-          background: linear-gradient(155deg, #0b6e8c 0%, #06485c 62%, #04303e 100%);
+          background: linear-gradient(158deg, #0d87a6 0%, #0a4a5e 55%, #08202a 100%);
           color: #fff;
           display: flex;
           align-items: flex-end;
@@ -137,7 +137,7 @@ export default function LoginPage() {
         .mark {
           font-family: var(--font-display), sans-serif;
           font-weight: 700;
-          font-size: 34px;
+          font-size: 40px;
           letter-spacing: -0.03em;
           margin-bottom: 14px;
         }

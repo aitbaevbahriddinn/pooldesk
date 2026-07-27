@@ -99,21 +99,24 @@ export default function DashboardPage() {
 
   return (
     <div className="page">
-      <header className="top">
-        <div>
-          <span className="eyebrow">Организация</span>
-          <h1>{org?.name}</h1>
-        </div>
-        <div className="who">
-          <span className="tiny muted">
-            {profile.full_name} · {profile.role === 'owner' ? 'владелец' : 'администратор'}
-          </span>
-          <button className="btn btn-quiet" onClick={logout}>
-            Выйти
-          </button>
+      <header className="top chrome">
+        <div className="top-inner">
+          <div>
+            <span className="eyebrow">Организация</span>
+            <h1>{org?.name}</h1>
+          </div>
+          <div className="who">
+            <span className="tiny muted">
+              {profile.full_name} · {profile.role === 'owner' ? 'владелец' : 'администратор'}
+            </span>
+            <button className="btn btn-quiet" onClick={logout}>
+              Выйти
+            </button>
+          </div>
         </div>
       </header>
 
+      <div className="content">
       <section className="block">
         <div className="spread" style={{ marginBottom: 14 }}>
           <h2>Бассейны</h2>
@@ -186,21 +189,27 @@ export default function DashboardPage() {
           </div>
         </div>
       </section>
+      </div>
 
       <style jsx>{`
         .page {
-          max-width: 940px;
-          margin: 0 auto;
-          padding: 36px 24px 80px;
+          min-height: 100vh;
         }
         .top {
+          padding: 30px 24px 26px;
+        }
+        .top-inner {
+          max-width: 940px;
+          margin: 0 auto;
           display: flex;
           align-items: flex-end;
           justify-content: space-between;
           gap: 16px;
-          padding-bottom: 22px;
-          border-bottom: 1px solid var(--line);
-          margin-bottom: 34px;
+        }
+        .content {
+          max-width: 940px;
+          margin: 0 auto;
+          padding: 34px 24px 80px;
         }
         .who {
           display: flex;

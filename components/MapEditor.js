@@ -434,7 +434,7 @@ export default function MapEditor({ poolId, objects, setObjects, onSave, saveSta
   return (
     <div className="editor">
       {/* ── Палитра ── */}
-      <aside className="palette">
+      <aside className="palette chrome">
         <div className="pal-head">
           <span className="eyebrow">Добавить объект</span>
           <p className="tiny muted" style={{ marginTop: 4 }}>
@@ -520,7 +520,7 @@ export default function MapEditor({ poolId, objects, setObjects, onSave, saveSta
           )}
         </div>
 
-        <div className="statusbar">
+        <div className="statusbar chrome">
           <label className="chk">
             <input type="checkbox" checked={showGrid} onChange={(e) => setShowGrid(e.target.checked)} />
             Сетка
@@ -564,7 +564,7 @@ export default function MapEditor({ poolId, objects, setObjects, onSave, saveSta
       </div>
 
       {/* ── Инспектор ── */}
-      <aside className="inspector">
+      <aside className="inspector chrome">
         {!selected.length && (
           <div className="insp-empty">
             <span className="eyebrow">Свойства</span>
@@ -749,10 +749,10 @@ export default function MapEditor({ poolId, objects, setObjects, onSave, saveSta
           min-height: 0;
         }
         .palette {
-          border-right: 1px solid var(--line);
+          border-right: 1px solid #0a1920;
         }
         .inspector {
-          border-left: 1px solid var(--line);
+          border-left: 1px solid #0a1920;
           overflow-y: auto;
         }
         .pal-head {
@@ -803,8 +803,8 @@ export default function MapEditor({ poolId, objects, setObjects, onSave, saveSta
           width: 15px;
           height: 15px;
           flex: none;
-          background: #e4ebee;
-          border: 1.5px solid #a9b8be;
+          background: rgba(232, 239, 242, 0.16);
+          border: 1.5px solid var(--ink-3);
         }
         .sw-rounded {
           border-radius: 3px;
@@ -814,14 +814,14 @@ export default function MapEditor({ poolId, objects, setObjects, onSave, saveSta
         }
         .sw-water {
           border-radius: 5px;
-          background: #d7ecf3;
-          border-color: #a8cfdc;
+          background: rgba(44, 197, 228, 0.25);
+          border-color: var(--water);
         }
 
         .viewport {
           position: relative;
           overflow: hidden;
-          background: var(--deck);
+          background: radial-gradient(120% 90% at 50% 0%, #f0f4f6 0%, #dde5e9 100%);
           touch-action: none;
           cursor: default;
         }
@@ -835,10 +835,11 @@ export default function MapEditor({ poolId, objects, setObjects, onSave, saveSta
           width: 4000px;
           height: 3000px;
           transform-origin: 0 0;
-          background-color: #fbfcfc;
-          background-image: linear-gradient(to right, #e4eaec 1px, transparent 1px),
-            linear-gradient(to bottom, #e4eaec 1px, transparent 1px);
-          box-shadow: inset 0 0 0 1px var(--line);
+          background-color: var(--paper);
+          background-image: linear-gradient(to right, #e6ecee 1px, transparent 1px),
+            linear-gradient(to bottom, #e6ecee 1px, transparent 1px);
+          border-radius: 20px;
+          box-shadow: 0 20px 60px rgba(6, 18, 24, 0.16);
         }
         .guide {
           position: absolute;

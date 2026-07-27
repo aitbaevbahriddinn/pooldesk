@@ -244,7 +244,7 @@ export default function MapBoard({ poolId, objects, onEdit }) {
   return (
     <div className="board">
       {/* ── Шапка дня ── */}
-      <div className="daybar">
+      <div className="daybar chrome">
         <div className="dates">
           <button className="btn btn-quiet" onClick={() => setDate(shift(date, -1))} aria-label="Предыдущий день">
             ‹
@@ -300,7 +300,7 @@ export default function MapBoard({ poolId, objects, onEdit }) {
             })}
           </div>
 
-          <div className="zoombar">
+          <div className="zoombar chrome">
             <button className="btn btn-quiet" onClick={() => setView((v) => ({ ...v, zoom: clamp(v.zoom * 0.85, 0.15, 2.5) }))}>
               −
             </button>
@@ -326,7 +326,7 @@ export default function MapBoard({ poolId, objects, onEdit }) {
         </div>
 
         {/* ── Панель справа ── */}
-        <aside className="side">
+        <aside className="side chrome">
           {activeVisit ? (
             <VisitPanel
               visit={activeVisit}
@@ -354,7 +354,7 @@ export default function MapBoard({ poolId, objects, onEdit }) {
 
       {/* ── Нижняя панель действий ── */}
       {selection.length > 0 && (
-        <div className="actionbar">
+        <div className="actionbar chrome">
           <div className="sel-info">
             <b>{selection.length}</b> {plural(selection.length, 'место', 'места', 'мест')}
             <span className="tiny muted names">{selectedNames.join(' · ')}</span>
@@ -420,6 +420,7 @@ export default function MapBoard({ poolId, objects, onEdit }) {
         }
         .daybar {
           flex: none;
+          border-bottom-color: #0a1920 !important;
           display: flex;
           align-items: center;
           justify-content: space-between;
@@ -460,7 +461,7 @@ export default function MapBoard({ poolId, objects, onEdit }) {
         .viewport {
           position: relative;
           overflow: hidden;
-          background: var(--deck);
+          background: radial-gradient(120% 90% at 50% 0%, #f0f4f6 0%, #dde5e9 100%);
           touch-action: none;
           cursor: grab;
         }
@@ -471,6 +472,9 @@ export default function MapBoard({ poolId, objects, onEdit }) {
           width: 4000px;
           height: 3000px;
           transform-origin: 0 0;
+          background: var(--paper);
+          border-radius: 20px;
+          box-shadow: 0 20px 60px rgba(6, 18, 24, 0.16);
         }
         .zoombar {
           position: absolute;
@@ -498,7 +502,7 @@ export default function MapBoard({ poolId, objects, onEdit }) {
           text-align: center;
         }
         .side {
-          border-left: 1px solid var(--line);
+          border-left: 1px solid #0a1920;
           background: var(--surface);
           overflow-y: auto;
           min-height: 0;
@@ -515,7 +519,7 @@ export default function MapBoard({ poolId, objects, onEdit }) {
           background: var(--surface);
           border: 1px solid var(--line-strong);
           border-radius: 999px;
-          box-shadow: var(--shadow-3);
+          box-shadow: 0 18px 44px rgba(6, 18, 24, 0.45);
           max-width: calc(100% - 320px);
         }
         .sel-info {
@@ -756,7 +760,7 @@ function Row({ v, date, objectById, onOpen, faded }) {
           opacity: 0.55;
         }
         .late {
-          background: #fdf6e3;
+          background: rgba(234, 179, 8, 0.14);
         }
         .bar {
           width: 3px;
@@ -782,7 +786,7 @@ function Row({ v, date, objectById, onOpen, faded }) {
           white-space: nowrap;
         }
         .line3 {
-          color: #8a5c02;
+          color: #f5cf4a;
           font-weight: 600;
         }
         .chip {
@@ -793,21 +797,21 @@ function Row({ v, date, objectById, onOpen, faded }) {
           white-space: nowrap;
         }
         .chip.booked {
-          background: #fdf3dd;
-          color: #8a5c02;
+          background: rgba(234, 179, 8, 0.2);
+          color: #f5cf4a;
         }
         .chip.arrived {
-          background: #fdeaea;
-          color: #971b1b;
+          background: rgba(225, 29, 72, 0.22);
+          color: #ff8098;
         }
         .chip.completed {
-          background: #e8f6ed;
-          color: #10682f;
+          background: rgba(16, 185, 129, 0.18);
+          color: #4fd8a6;
         }
         .chip.cancelled,
         .chip.no_show {
-          background: #eef1f2;
-          color: #6a7b83;
+          background: rgba(148, 163, 184, 0.18);
+          color: #a3b6c0;
         }
       `}</style>
     </button>
@@ -937,21 +941,21 @@ function VisitPanel({ visit, objectById, date, onBack, onStatus, onEdit, onRemov
           border-radius: 999px;
         }
         .chip.booked {
-          background: #fdf3dd;
-          color: #8a5c02;
+          background: rgba(234, 179, 8, 0.2);
+          color: #f5cf4a;
         }
         .chip.arrived {
-          background: #fdeaea;
-          color: #971b1b;
+          background: rgba(225, 29, 72, 0.22);
+          color: #ff8098;
         }
         .chip.completed {
-          background: #e8f6ed;
-          color: #10682f;
+          background: rgba(16, 185, 129, 0.18);
+          color: #4fd8a6;
         }
         .chip.cancelled,
         .chip.no_show {
-          background: #eef1f2;
-          color: #6a7b83;
+          background: rgba(148, 163, 184, 0.18);
+          color: #a3b6c0;
         }
         .meta {
           margin: 0;

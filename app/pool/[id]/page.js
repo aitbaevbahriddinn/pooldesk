@@ -120,7 +120,7 @@ export default function PoolPage({ params }) {
 
   return (
     <div className="shell">
-      <header className="bar">
+      <header className="bar chrome">
         <div className="left">
           <Link href="/" className="back">
             ← Бассейны
@@ -171,8 +171,7 @@ export default function PoolPage({ params }) {
           padding: 0 14px;
           height: 54px;
           flex: none;
-          background: var(--surface);
-          border-bottom: 1px solid var(--line);
+          border-bottom: 1px solid #0a1920;
         }
         .left {
           display: flex;
