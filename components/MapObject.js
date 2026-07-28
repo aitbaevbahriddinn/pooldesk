@@ -130,30 +130,33 @@ export default function MapObject({
           letter-spacing: -0.01em;
         }
 
-        /* ── Номер: не масштабируется вместе с картой, поэтому
-             читается и при полном отдалении, и вблизи. ── */
+        /* ── Номер: компактный кружок на углу фигуры, не масштабируется
+             вместе с картой — читается и при отдалении, и вблизи.
+             Тонкое кольцо в цвете статуса — сам номер всегда белый/тёмный,
+             чтобы не терять читаемость на любом фоне. ── */
         .numtag {
           position: absolute;
-          top: 3px;
-          left: 3px;
+          top: -7px;
+          left: -7px;
           transform-origin: top left;
-          display: block;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          min-width: 17px;
+          height: 17px;
+          padding: 0 4px;
           font-family: var(--font-body), sans-serif;
-          font-size: 10px;
+          font-size: 9.5px;
           font-weight: 800;
           line-height: 1;
           color: #0c1b22;
-          background: rgba(255, 255, 255, 0.94);
-          border: 1px solid rgba(12, 27, 34, 0.12);
-          padding: 2.5px 4.5px;
-          border-radius: 4px;
-          box-shadow: 0 1px 2px rgba(12, 27, 34, 0.28);
+          background: #ffffff;
+          border: 1.5px solid var(--edge, #c3cfd3);
+          border-radius: 999px;
+          box-shadow: 0 1px 3px rgba(12, 27, 34, 0.32);
           pointer-events: none;
           white-space: nowrap;
-          z-index: 2;
-        }
-        .st-busy .numtag {
-          background: rgba(255, 255, 255, 0.96);
+          z-index: 3;
         }
 
         /* ── Формы ───────────────────────────────── */
