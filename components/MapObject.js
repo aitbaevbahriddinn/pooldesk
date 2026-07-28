@@ -1,25 +1,16 @@
 'use client'
 
-import { memo } from 'react'
 import TypeIcon from './TypeIcon'
 import { objectName, shapeOf, typeOf } from '../lib/objectTypes'
 
-const POLY_SHAPES = ['hex', 'octa', 'diamond']
-
 // Один объект на карте. Используется и в редакторе, и в рабочем режиме.
 // status: null (нейтрально) | 'free' | 'booked' | 'busy' | 'off'
-// Обёрнут в memo: во время перетаскивания родитель обновляет только
-// перемещаемые объекты (остальные сохраняют ссылку в массиве objects),
-// поэтому немодифицированные объекты не должны перерисовываться —
-// это требует, чтобы onPointerDown, приходящий сверху, был стабильной
-// ссылкой (см. MapEditor/MapBoard, где он больше не создаётся инлайн).
-function MapObject({
+export default function MapObject({
   obj,
   status = null,
   ringColor = null,
   selected = false,
   dimmed = false,
-  dragging = false,
   zoom = 1,
   onPointerDown,
   onDoubleClick,
@@ -27,12 +18,14 @@ function MapObject({
   const t = typeOf(obj.type)
   const shape = shapeOf(obj)
   const name = objectName(obj)
-  const isPoly = POLY_SHAPES.includes(shape)
 
   const shortest = Math.min(obj.width, obj.height)
   const onScreen = shortest * zoom
   const showIcon = onScreen > 52
   const showText = onScreen > 26
+  // Номер виден всегда — даже когда фигура крошечная на экране,
+  // бейдж не масштабируется вместе с картой (см. .numtag ниже).
+  const showBadge = t.bookable
 
   const fontSize = Math.max(
     9,
@@ -40,6 +33,7 @@ function MapObject({
   )
   const iconSize = Math.max(12, Math.min(30, shortest * 0.24))
   const border = 1.6 / zoom
+  const counter = obj.rotation ? `scale(${1 / zoom}) rotate(${-obj.rotation}deg)` : `scale(${1 / zoom})`
 
   return (
     <div
@@ -50,7 +44,6 @@ function MapObject({
         status ? `st-${status}` : 'st-none',
         selected ? 'sel' : '',
         dimmed ? 'dim' : '',
-        dragging ? 'dragging' : '',
         obj.locked ? 'locked' : '',
       ].join(' ')}
       style={{
@@ -68,7 +61,12 @@ function MapObject({
     >
       <span className={`face sh-${shape}`} aria-hidden="true" />
       {ringColor && <span className={`ring sh-${shape}`} aria-hidden="true" />}
-      {selected && isPoly && <span className={`sel-glow sh-${shape}`} aria-hidden="true" />}
+
+      {showBadge && (
+        <span className="numtag" style={{ transform: counter }}>
+          {obj.number}
+        </span>
+      )}
 
       <span
         className="cap"
@@ -96,14 +94,7 @@ function MapObject({
           box-sizing: border-box;
           background: var(--edge, #b0c0c6);
           color: var(--label, #0c1b22);
-          transition: filter var(--dur-fast, 0.12s), box-shadow var(--dur-fast, 0.12s);
-        }
-        .mo:hover:not(.locked):not(.dim):not(.dragging) {
-          filter: brightness(1.05);
-        }
-        .mo.dragging {
-          box-shadow: 0 16px 32px rgba(6, 18, 24, 0.38);
-          z-index: 5;
+          transition: filter 0.12s;
         }
         .face {
           position: absolute;
@@ -137,6 +128,32 @@ function MapObject({
           line-height: 1.14;
           text-align: center;
           letter-spacing: -0.01em;
+        }
+
+        /* ── Номер: не масштабируется вместе с картой, поэтому
+             читается и при полном отдалении, и вблизи. ── */
+        .numtag {
+          position: absolute;
+          top: 3px;
+          left: 3px;
+          transform-origin: top left;
+          display: block;
+          font-family: var(--font-body), sans-serif;
+          font-size: 10px;
+          font-weight: 800;
+          line-height: 1;
+          color: #0c1b22;
+          background: rgba(255, 255, 255, 0.94);
+          border: 1px solid rgba(12, 27, 34, 0.12);
+          padding: 2.5px 4.5px;
+          border-radius: 4px;
+          box-shadow: 0 1px 2px rgba(12, 27, 34, 0.28);
+          pointer-events: none;
+          white-space: nowrap;
+          z-index: 2;
+        }
+        .st-busy .numtag {
+          background: rgba(255, 255, 255, 0.96);
         }
 
         /* ── Формы ───────────────────────────────── */
@@ -199,18 +216,16 @@ function MapObject({
         }
 
         /* ── Статусы. Отличаются и цветом, и заливкой,
-             чтобы их нельзя было спутать боковым зрением.
-             Значения берутся из globals.css (--free-fill и т.д.) —
-             единый источник вместо трёх независимых копий. ── */
+             чтобы их нельзя было спутать боковым зрением. ── */
         .st-free {
-          --fill: var(--free-fill, #ecfdf3);
-          --edge: var(--free-edge, #10b981);
-          --label: var(--free-label, #05603a);
+          --fill: #ecfdf3;
+          --edge: #10b981;
+          --label: #05603a;
         }
         .st-booked {
-          --fill: var(--booked-fill, #fef7db);
-          --edge: var(--booked-edge, #eab308);
-          --label: var(--booked-label, #6b4708);
+          --fill: #fef7db;
+          --edge: #eab308;
+          --label: #6b4708;
         }
         .st-booked .face {
           background-image: repeating-linear-gradient(
@@ -220,9 +235,9 @@ function MapObject({
           );
         }
         .st-busy {
-          --fill: var(--busy-fill, #e11d48);
-          --edge: var(--busy-edge, #9f1239);
-          --label: var(--busy-label, #ffffff);
+          --fill: #e11d48;
+          --edge: #9f1239;
+          --label: #ffffff;
         }
         .st-busy .face {
           background-image: linear-gradient(
@@ -235,9 +250,9 @@ function MapObject({
           opacity: 0.85;
         }
         .st-off {
-          --fill: var(--off-fill, #e2e8f0);
-          --edge: var(--off-edge, #94a3b8);
-          --label: var(--off-label, #607484);
+          --fill: #e2e8f0;
+          --edge: #94a3b8;
+          --label: #607484;
         }
         .st-off .txt {
           text-decoration: line-through;
@@ -268,16 +283,7 @@ function MapObject({
         .sh-octa.sel,
         .sh-diamond.sel {
           outline: none;
-        }
-        /* ── Выделение для фигур с clip-path: outline не умеет повторять
-             форму, поэтому вместо блюра рисуем такой же "ореол", как
-             у рамки компании (.ring) — единый визуальный язык. ── */
-        .sel-glow {
-          position: absolute;
-          inset: calc(var(--bw) * -3.4);
-          background: var(--water, #0d87a6);
-          pointer-events: none;
-          z-index: -1;
+          filter: drop-shadow(0 0 calc(var(--bw) * 3) #0d87a6);
         }
         .dim {
           filter: saturate(0.2) opacity(0.4);
@@ -289,5 +295,3 @@ function MapObject({
     </div>
   )
 }
-
-export default memo(MapObject)

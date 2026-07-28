@@ -1,9 +1,6 @@
 'use client'
 
-import { useState } from 'react'
-import Modal from './ui/Modal'
-import Button from './ui/Button'
-import { plural } from '../lib/format'
+import { useEffect, useState } from 'react'
 
 export default function VisitDialog({ mode, seatNames, initial, onCancel, onSubmit }) {
   const [guest, setGuest] = useState(initial?.guest_name || '')
@@ -15,6 +12,12 @@ export default function VisitDialog({ mode, seatNames, initial, onCancel, onSubm
   const [error, setError] = useState('')
 
   const seating = mode === 'seat'
+
+  useEffect(() => {
+    const esc = (e) => e.key === 'Escape' && onCancel()
+    window.addEventListener('keydown', esc)
+    return () => window.removeEventListener('keydown', esc)
+  }, [onCancel])
 
   async function submit(e) {
     e.preventDefault()
@@ -35,12 +38,12 @@ export default function VisitDialog({ mode, seatNames, initial, onCancel, onSubm
   }
 
   return (
-    <Modal onClose={onCancel} labelledBy="visit-dialog-title" maxWidth={470}>
-      <div className="dialog-body">
+    <div className="backdrop" onPointerDown={(e) => e.target === e.currentTarget && onCancel()}>
+      <div className="sheet card" role="dialog" aria-modal="true">
         <span className="eyebrow">
           {mode === 'edit' ? 'Изменить бронь' : seating ? 'Посадить гостей' : 'Новая бронь'}
         </span>
-        <h2 id="visit-dialog-title" style={{ margin: '6px 0 4px' }}>
+        <h2 style={{ margin: '6px 0 4px' }}>
           {seatNames.length} {plural(seatNames.length, 'место', 'места', 'мест')}
         </h2>
         <p className="tiny muted seats">{seatNames.join(' · ')}</p>
@@ -112,23 +115,38 @@ export default function VisitDialog({ mode, seatNames, initial, onCancel, onSubm
           {error && <div className="notice notice-error">{error}</div>}
 
           <div className="actions">
-            <Button type="button" variant="ghost" onClick={onCancel}>
+            <button type="button" className="btn btn-ghost" onClick={onCancel}>
               Отмена
-            </Button>
-            <Button
-              variant="primary"
-              loading={busy}
-              loadingText="Сохраняем…"
-            >
-              {mode === 'edit' ? 'Сохранить' : seating ? 'Посадить' : 'Забронировать'}
-            </Button>
+            </button>
+            <button className="btn btn-primary" disabled={busy}>
+              {busy
+                ? 'Сохраняем…'
+                : mode === 'edit'
+                  ? 'Сохранить'
+                  : seating
+                    ? 'Посадить'
+                    : 'Забронировать'}
+            </button>
           </div>
         </form>
       </div>
 
       <style jsx>{`
-        .dialog-body {
+        .backdrop {
+          position: fixed;
+          inset: 0;
+          z-index: 50;
+          display: grid;
+          place-items: center;
+          padding: 20px;
+          background: rgba(13, 27, 33, 0.42);
+          backdrop-filter: blur(2px);
+        }
+        .sheet {
+          width: 100%;
+          max-width: 470px;
           padding: 26px;
+          box-shadow: var(--shadow-3);
         }
         .seats {
           margin-bottom: 20px;
@@ -146,12 +164,20 @@ export default function VisitDialog({ mode, seatNames, initial, onCancel, onSubm
           gap: 8px;
           margin-top: 8px;
         }
-        @media (max-width: 640px) {
+        @media (max-width: 520px) {
           .two {
             grid-template-columns: 1fr;
           }
         }
       `}</style>
-    </Modal>
+    </div>
   )
+}
+
+function plural(n, one, few, many) {
+  const m10 = n % 10
+  const m100 = n % 100
+  if (m10 === 1 && m100 !== 11) return one
+  if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return few
+  return many
 }

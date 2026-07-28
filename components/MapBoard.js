@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import MapObject from './MapObject'
 import VisitDialog from './VisitDialog'
+import usePinchZoom from '../lib/usePinchZoom'
 import { createClient } from '../lib/supabaseClient'
 import { objectName, typeOf } from '../lib/objectTypes'
 
@@ -38,6 +39,8 @@ export default function MapBoard({ poolId, objects, onEdit }) {
   const viewportRef = useRef(null)
   const pan = useRef(null)
   const fitted = useRef(false)
+
+  const pinchActive = usePinchZoom(viewportRef, view, setView, pan, 0.15, 2.5)
 
   /* Живые таймеры удержания */
   useEffect(() => {
@@ -120,6 +123,7 @@ export default function MapBoard({ poolId, objects, onEdit }) {
   /* ── Взаимодействие с картой ───────────────────────── */
   function clickObject(e, o) {
     e.stopPropagation()
+    if (pinchActive.current) return
     if (!typeOf(o.type).bookable || !o.is_available) return
     const v = byObject.get(o.id)
     if (v) {
@@ -133,6 +137,7 @@ export default function MapBoard({ poolId, objects, onEdit }) {
   }
 
   function startPan(e) {
+    if (pinchActive.current) return
     if (e.target.closest('.mo')) return
     setSelection([])
     setActiveId(null)
@@ -475,6 +480,18 @@ export default function MapBoard({ poolId, objects, onEdit }) {
           font-size: 13px;
           color: var(--ink-2);
           margin-left: 4px;
+        }
+        @media (max-width: 560px) {
+          .daybar {
+            gap: 10px;
+            padding: 8px 10px;
+          }
+          .dates {
+            gap: 2px;
+          }
+          .human {
+            display: none;
+          }
         }
         :global(.btn.sm) {
           padding: 5px 10px;
